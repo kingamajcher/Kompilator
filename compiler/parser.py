@@ -6,8 +6,8 @@ class MyParser(Parser):
     tokens = MyLexer.tokens
 
     precedence = (
-        ('left', '+', '-'),
-        ('left', '*', '/', '%')
+        ('left', 'PLUS', 'MINUS'),
+        ('left', 'MULTIPLY', 'DIVIDE', 'MOD')
     )
 
     # program_all
@@ -220,3 +220,11 @@ class MyParser(Parser):
     @_('PIDENTIFIER LBRACKET NUM RBRACKET')
     def identifier(self, t):
         pass
+
+
+    # error
+    def error(self, t):
+        if p:
+            print(f'Syntax error: {t.type}')
+        else:
+            print("Syntax error at EOF")

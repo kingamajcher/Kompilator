@@ -73,7 +73,7 @@ class MyLexer(Lexer):
         return t
 
     def error(self, t):
-        print(f"Nieznany znak: {t.value[0]!r} na linii {self.lineno}, kolumna {self.index}")
+        print(f"Unknown symbol: {t.value[0]!r} on line {self.lineno}")
         self.index += 1
 
     
