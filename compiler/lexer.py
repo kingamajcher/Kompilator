@@ -1,7 +1,7 @@
 from sly import Lexer
 
 class MyLexer(Lexer):
-    tokens = { PROGRAM, PROCEDURE, IS, BEGIN, END, IF, THEN, ELSE, ENDIF, WHILE, DO, ENDWHILE, REPEAT, UNTIL, FOR, FROM, TO, ENDFOR, DOWNTO, READ, WRITE, PIDENTIFIER, NUM, EQUAL, NOTEQUAL, GREATER, LESS, GREATEREQUAL, LESSEQUAL, PLUS, MINUS, MULTIPLY, DIVIDE, MOD, ASSIGN }
+    tokens = { PROGRAM, PROCEDURE, IS, BEGIN, END, IF, THEN, ELSE, ENDIF, WHILE, DO, ENDWHILE, REPEAT, UNTIL, FOR, FROM, TO, ENDFOR, DOWNTO, READ, WRITE, PIDENTIFIER, NUM, T, EQUAL, NOTEQUAL, GREATER, LESS, GREATEREQUAL, LESSEQUAL, PLUS, MINUS, MULTIPLY, DIVIDE, MOD, ASSIGN }
 
     literals = {'+', '-', '*', '/', '%', ',', ':', ';', '(', ')', '[', ']'}
 
@@ -36,6 +36,7 @@ class MyLexer(Lexer):
 
     PIDENTIFIER = r'[_a-z]+'
     NUM = r'-?\d+'
+    T = r'T'
 
     ASSIGN = r':='
 
@@ -50,14 +51,14 @@ class MyLexer(Lexer):
 
     @_(r'#.*')
     def ignore_comment(self, t):
-        self.lineno += t.value.count('\n')  # Aktualizowanie linii
+        self.lineno += t.value.count('\n')
 
     @_(r'\n+')
     def ignore_newline(self, t):
-        self.lineno += t.value.count('\n')  # Aktualizowanie linii
+        self.lineno += t.value.count('\n')
 
     def NUM(self, t):
-        t.value = int(t.value)  # Konwersja na liczbę
+        t.value = int(t.value)
         return t
 
     def error(self, t):
@@ -98,4 +99,3 @@ if __name__ == '__main__':
     lexer = MyLexer()
     for token in lexer.tokenize(data1):
         print(token)
-        #print('type=%r, value=%r' % (token.type, token.value))
