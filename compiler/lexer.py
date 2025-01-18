@@ -1,9 +1,7 @@
 from sly import Lexer
 
 class MyLexer(Lexer):
-    tokens = { PROGRAM, PROCEDURE, IS, BEGIN, END, IF, THEN, ELSE, ENDIF, WHILE, DO, ENDWHILE, REPEAT, UNTIL, FOR, FROM, TO, ENDFOR, DOWNTO, READ, WRITE, PIDENTIFIER, NUM, T, EQUAL, NOTEQUAL, GREATER, LESS, GREATEREQUAL, LESSEQUAL, PLUS, MINUS, MULTIPLY, DIVIDE, MOD, ASSIGN }
-
-    literals = {'+', '-', '*', '/', '%', ',', ':', ';', '(', ')', '[', ']'}
+    tokens = { PROGRAM, PROCEDURE, IS, BEGIN, END, IF, THEN, ELSE, ENDIF, WHILE, DO, ENDWHILE, REPEAT, UNTIL, FOR, FROM, TO, ENDFOR, DOWNTO, READ, WRITE, PIDENTIFIER, NUM, T, EQUAL, NOTEQUAL, GREATER, LESS, GREATEREQUAL, LESSEQUAL, PLUS, MINUS, MULTIPLY, DIVIDE, MOD, ASSIGN, PLUS, MINUS, MULTIPLY, DIVIDE, MOD, COMMA, COLON, SEMICOLON, LPAREN, RPAREN, LBRACKET, RBRACKET }
 
     PROGRAM = r'PROGRAM'
     PROCEDURE = r'PROCEDURE'
@@ -46,6 +44,19 @@ class MyLexer(Lexer):
     LESS = r'<'
     GREATEREQUAL = r'>='
     LESSEQUAL = r'<='
+
+    PLUS = r'\+'
+    MINUS = r'-'
+    MULTIPLY = r'\*'
+    DIVIDE = r'/'
+    MOD = r'%'
+    COMMA = r'\,'
+    COLON = r':'
+    SEMICOLON = r';'
+    LPAREN = r'\('
+    RPAREN = r'\)'
+    LBRACKET = r'\['
+    RBRACKET  = r'\]'
 
     ignore = ' \t'
 
