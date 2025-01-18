@@ -43,41 +43,53 @@ class MyParser(Parser):
     # commands
     @_('commands command')
     def commands(self, p):
-        pass
+        return p[0] + [p[1]]
 
     @_('command')
     def commands(self, p):
-        pass
+        return [p[0]]
 
 
     # command
     @_('identifier ASSIGN expression SEMICOLON')
     def command(self, p):
-        pass
+        return "assign", p[0], p[2]
 
     @_('IF condition THEN commands ELSE commands ENDIF')
     def command(self, p):
-        pass
+        temp = "if_else", p[1], p[3], p[5], self.consts.copy() 
+        self.consts.clear()
+        return temp
 
     @_('IF condition THEN commands ENDIF')
     def command(self, p):
-        pass
+        temp = "if", p[1], p[3], self.consts.copy()
+        self.consts.clear()
+        return temp
 
     @_('WHILE condition DO commands ENDWHILE')
     def command(self, p):
-        pass
+        temp = "while", p[1], p[3], self.consts.copy()
+        self.consts.clear()
+        return temp
 
     @_('REPEAT commands UNTIL condition SEMICOLON')
     def command(self, p):
-        pass
+        temp = "repeat", p[3], p[1], self.consts.copy()
+        self.consts.clear()
+        return temp
 
     @_('FOR PIDENTIFIER FROM value TO value DO commands ENDFOR')
     def command(self, p):
-        pass
+        temp = "for_to", p[1], p[3], p[5], p[7], self.consts.copy()
+        self.consts.clear()
+        return temp
 
     @_('FOR PIDENTIFIER FROM value DOWNTO value DO commands ENDFOR')
     def command(self, p):
-        pass
+        temp = "for_downto", p[1], p[3], p[5], p[7], self.consts.copy()
+        self.consts.clear()
+        return temp
 
     @_('proc_call SEMICOLON')
     def command(self, p):
@@ -85,7 +97,7 @@ class MyParser(Parser):
 
     @_('READ identifier SEMICOLON')
     def command(self, p):
-        pass
+        return "read", p[1]
 
     @_('WRITE value SEMICOLON')
     def command(self, p):
@@ -153,69 +165,69 @@ class MyParser(Parser):
     # expression
     @_('value')
     def expression(self, p):
-        pass
+        return p[0]
 
     @_('value PLUS value')
     def expression(self, p):
-        pass
+        return "add", p[0], p[2]
 
     @_('value MINUS value')
     def expression(self, p):
-        pass
+        return "sub", p[0], p[2]
 
     @_('value MULTIPLY value')
     def expression(self, p):
-        pass
+        return "mul", p[0], p[2]
 
     @_('value DIVIDE value')
     def expression(self, p):
-        pass
+        return "div", p[0], p[2]
 
     @_('value MOD value')
     def expression(self, p):
-        pass
+        return "mod", p[0], p[2]
 
 
     # condition
     @_('value EQUAL value')
     def condition(self, p):
-        pass
+        return "eq", p[0], p[2]
 
     @_('value NOTEQUAL value')
     def condition(self, p):
-        pass
+        return "neq", p[0], p[2]
 
     @_('value GREATER value')
     def condition(self, p):
-        pass
+        return "gt", p[0], p[2]
 
     @_('value LESS value')
     def condition(self, p):
-        pass
+        return "lt", p[0], p[2]
 
     @_('value GREATEREQUAL value')
     def condition(self, p):
-        pass
+        return "geq", p[0], p[2]
 
     @_('value LESSEQUAL value')
     def condition(self, p):
-        pass
+        return "leq", p[0], p[2]
 
 
     # value
     @_('NUM')
     def value(self, p):
-        pass
+        return "num", p[0]
 
     @_('identifier')
     def value(self, p):
-        pass
+        return "id", p[0]
 
 
     # identifier
     @_('PIDENTIFIER')
     def identifier(self, p):
-        pass
+        return "pid", p[0]
 
     @_('PIDENTIFIER LBRACKET PIDENTIFIER RBRACKET')
     def identifier(self, p):
