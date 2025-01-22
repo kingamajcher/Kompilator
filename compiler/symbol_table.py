@@ -7,8 +7,8 @@ class Array:
         self.first_index = first_index
         self.last_index = last_index
 
-    def __repr__(self):
-        return f"Array at {self.memory_index}, [{self.first_index}:{self.last_index}]"
+    def __str__(self):
+        return f"Array '{self.name}' at memory index {self.memory_index}, range [{self.first_index}:{self.last_index}]"
     
     def get_at(self, index):
         if index < self.first_index or index > self.last_index:
@@ -21,11 +21,9 @@ class Variable:
         self.memory_index = memory_index
         self.initialized = False
 
-    def __repr__(self):
-        if self.initialized:
-            return f"Initialized variable at {self.memory_index}"
-        else:
-            return f"Uninitialized variable at {self.memory_index}"
+    def __str__(self):
+        status = "Initialized" if self.initialized else "Uninitialized"
+        return f"{status} variable at memory index {self.memory_index}"
     
 
 class Iterator:
@@ -33,8 +31,9 @@ class Iterator:
         self.memory_index = memory_index
         self.limit_index = limit_index
 
-    def __repr__(self):
-        return f"Iterator at {self.memory_index}"
+    def __str__(self):
+        return f"Iterator at memory index {self.memory_index}, limit index {self.limit_index}"
+
     
 
 class Procedure:
@@ -44,8 +43,8 @@ class Procedure:
         self.parameters = parameters
         self.locals = SymbolTable()
 
-    def __repr__(self):
-        return f"Procedure {self.name} at {self.memory_index} with parameters {self.parameters}"
+    def __str__(self):
+        return f"Procedure '{self.name}' at memory index {self.memory_index} with parameters {self.parameters}"
     
 
 class SymbolTable(dict):
@@ -93,8 +92,8 @@ class SymbolTable(dict):
             raise ValueError(f"Error: Redeclaration of procedure '{name}'.")
         self.procedures[name] = Procedure(name, start_address, parameters)
 
-    # checking if iterator exists
-    def is_iterator(self, name):
+    # getting iterator
+    def get_iterator(self, name):
         return name in self.iterators
     
     # getting variable
@@ -130,8 +129,9 @@ class SymbolTable(dict):
         else:
             raise ValueError(f"Error: Undeclared procedure'{name}'.")
         
-def test_symbol_table():
-    # Tworzymy nową tablicę symboli
+
+
+if __name__ == "__main__":
     symbol_table = SymbolTable()
 
     print("=== Dodawanie zmiennych ===")
@@ -153,7 +153,7 @@ def test_symbol_table():
     print("\n=== Dodawanie stałych ===")
     addr1 = symbol_table.add_const(42)
     addr2 = symbol_table.add_const(100)
-    addr3 = symbol_table.add_const(42)  # Powinna zwrócić ten sam adres co addr1
+    addr3 = symbol_table.add_const(42)
     print(f"Adres stałej 42: {addr1}")
     print(f"Adres stałej 100: {addr2}")
     print(f"Adres stałej 42 (ponownie): {addr3}")
@@ -178,19 +178,16 @@ def test_symbol_table():
 
     print("\n=== Obsługa błędów ===")
     try:
-        symbol_table.add_variable("x")  # Próba redeklaracji
+        symbol_table.add_variable("x")
     except Exception as e:
         print(f"{e}")
 
     try:
-        symbol_table.get_array_at("matrix", 10)  # Indeks poza zakresem
+        symbol_table.get_array_at("matrix", 10)
     except Exception as e:
         print(f"{e}")
 
     try:
-        symbol_table.get_variable("unknown")  # Zmienna niezadeklarowana
+        symbol_table.get_variable("unknown")
     except Exception as e:
         print(f"{e}")
-
-if __name__ == "__main__":
-    test_symbol_table()

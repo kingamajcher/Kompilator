@@ -1,62 +1,54 @@
 from sly import Lexer
 
 class MyLexer(Lexer):
-    tokens = { PROGRAM, PROCEDURE, IS, BEGIN, END, IF, THEN, ELSE, ENDIF, WHILE, DO, ENDWHILE, REPEAT, UNTIL, FOR, FROM, TO, ENDFOR, DOWNTO, READ, WRITE, PIDENTIFIER, NUM, T, EQUAL, NOTEQUAL, GREATER, LESS, GREATEREQUAL, LESSEQUAL, PLUS, MINUS, MULTIPLY, DIVIDE, MOD, ASSIGN, PLUS, MINUS, MULTIPLY, DIVIDE, MOD, COMMA, COLON, SEMICOLON, LPAREN, RPAREN, LBRACKET, RBRACKET }
+    tokens = { "PROCEDURE", "ENDWHILE", "PROGRAM", "DOWNTO", "ENDFOR", "REPEAT", "BEGIN", "ENDIF", "UNTIL", "WHILE", "WRITE", "ELSE", "FROM", "THEN", "END", "FOR", "DO", "IF", "IS", "TO", "READ", "T", "PIDENTIFIER", "NUM", "ASSIGN", "NOTEQUAL", "GREATEREQUAL", "LESSEQUAL", "EQUAL", "GREATER", "LESS", "COMMA", "SEMICOLON", "COLON", "PLUS", "MINUS", "MULTIPLY", "DIVIDE", "MOD", "LBRACKET", "RBRACKET", "LPAREN", "RPAREN" }
 
-    PROGRAM = r'PROGRAM'
     PROCEDURE = r'PROCEDURE'
-
-    BEGIN = r'BEGIN'
-    END = r'END'
-
-    IS = r'IS'
-
-    IF = r'IF'
-    THEN = r'THEN'
-    ELSE = r'ELSE'
-    ENDIF = r'ENDIF'
-
-    WHILE = r'WHILE'
-    DO = r'DO'
     ENDWHILE = r'ENDWHILE'
-
-    REPEAT = r'REPEAT'
-    UNTIL = r'UNTIL'
-
-    FOR = r'FOR'
-    FROM = r'FROM'
-    TO = r'TO'
+    PROGRAM = r'PROGRAM'
     DOWNTO = r'DOWNTO'
     ENDFOR = r'ENDFOR'
-
-    READ = r'READ'
+    REPEAT = r'REPEAT'
+    BEGIN  = r'BEGIN'
+    ENDIF = r'ENDIF'
+    UNTIL = r'UNTIL'
+    WHILE = r'WHILE'
     WRITE = r'WRITE'
-
-    PIDENTIFIER = r'[_a-z]+'
-    NUM = r'-?\d+'
+    ELSE = r'ELSE'
+    FROM = r'FROM'
+    READ = r'READ'
+    THEN = r'THEN'
+    END = r'END'
+    FOR = r'FOR'
+    DO = r'DO'
+    IF = r'IF'
+    IS = r'IS'
+    TO = r'TO'
     T = r'T'
 
-    ASSIGN = r':='
+    PIDENTIFIER = r'[_a-z]+'
 
-    EQUAL = r'='
+    ASSIGN = r':='
     NOTEQUAL = r'!='
-    GREATER = r'>'
-    LESS = r'<'
     GREATEREQUAL = r'>='
     LESSEQUAL = r'<='
-
-    PLUS = r'\+'
-    MINUS = r'-'
-    MULTIPLY = r'\*'
-    DIVIDE = r'/'
-    MOD = r'%'
-    COMMA = r'\,'
-    COLON = r':'
+    EQUAL = r'='
+    GREATER = r'>'
+    LESS = r'<'
+    COMMA = r','
     SEMICOLON = r';'
+    COLON = r':'
+    PLUS = r'\+'
+    MINUS = r'\-'
+    MULTIPLY = r'\*'
+    DIVIDE = r'\/'
+    MOD = r'\%'
+    LBRACKET = r'\['
+    RBRACKET = r'\]'
     LPAREN = r'\('
     RPAREN = r'\)'
-    LBRACKET = r'\['
-    RBRACKET  = r'\]'
+
+    NUM = r'-?\d+'
 
     ignore = ' \t'
 
