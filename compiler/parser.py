@@ -1,6 +1,6 @@
 from sly import Parser
 from lexer import MyLexer
-from symbol_table import Array, Variable, Iterator, SymbolTable
+from symbol_table import SymbolTable
 
 class MyParser(Parser):
     tokens = MyLexer.tokens
@@ -11,260 +11,263 @@ class MyParser(Parser):
         ('left', 'MULTIPLY', 'DIVIDE', 'MOD')
     )
 
-    # program_all
+    # Program
     @_('procedures main')
     def program_all(self, p):
-        pass
+        return ("program", p.procedures, p.main)
 
 
-    # procedures
+    # Procedures
     @_('procedures PROCEDURE proc_head IS declarations BEGIN commands END')
     def procedures(self, p):
-        pass
+        return p.procedures + [("procedure", p.proc_head, p.declarations, p.commands)]
 
     @_('procedures PROCEDURE proc_head IS BEGIN commands END')
     def procedures(self, p):
-        pass
+        return p.procedures + [("procedure", p.proc_head, None, p.commands)]
 
     @_('')
     def procedures(self, p):
         return []
 
 
-    # main
+    # Main function
     @_('PROGRAM IS declarations BEGIN commands END')
     def main(self, p):
-        pass
+        return ("main", p.declarations, p.commands)
 
     @_('PROGRAM IS BEGIN commands END')
     def main(self, p):
-        pass
+        return ("main", None, p.commands)
 
 
-    # commands
+    # Commands list
     @_('commands command')
     def commands(self, p):
-        return p[0] + [p[1]]
+        return p.commands + [p.command]
 
     @_('command')
     def commands(self, p):
-        return [p[0]]
+        return [p.command]
 
 
-    # command
+    # Single command
     @_('identifier ASSIGN expression SEMICOLON')
     def command(self, p):
-        temp = "assign", p[0], p[2]
-        return temp
+        return ("assign", p.identifier, p.expression)
 
     @_('IF condition THEN commands ELSE commands ENDIF')
     def command(self, p):
-        temp = "if_else", p[1], p[3], p[5]
-        return temp
+        return ("if_else", p.condition, p.commands0, p.commands1)
 
     @_('IF condition THEN commands ENDIF')
     def command(self, p):
-        temp = "if", p[1], p[3]
-        return temp
+        return ("if", p.condition, p.commands)
 
     @_('WHILE condition DO commands ENDWHILE')
     def command(self, p):
-        temp = "while", p[1], p[3]
-        return temp
+        return ("while", p.condition, p.commands)
 
     @_('REPEAT commands UNTIL condition SEMICOLON')
     def command(self, p):
-        temp = "repeat", p[3], p[1]
-        return temp
+        return ("repeat", p.commands, p.condition)
 
     @_('FOR PIDENTIFIER FROM value TO value DO commands ENDFOR')
     def command(self, p):
-        temp = "for_to", p[1], p[3], p[5], p[7]
-        return temp
+        return ("for_to", p.PIDENTIFIER, p.value0, p.value1, p.commands)
 
     @_('FOR PIDENTIFIER FROM value DOWNTO value DO commands ENDFOR')
     def command(self, p):
-        temp = "for_downto", p[1], p[3], p[5], p[7]
-        return temp
-
-    @_('proc_call SEMICOLON')
-    def command(self, p):
-        pass
+        return ("for_downto", p.PIDENTIFIER, p.value0, p.value1, p.commands)
 
     @_('READ identifier SEMICOLON')
     def command(self, p):
-        temp = "read", p[1]
-        return temp
+        return ("read", p.identifier)
 
     @_('WRITE value SEMICOLON')
     def command(self, p):
-        temp = "write", p[1]
+        return ("write", p.value)
+
+    @_('proc_call SEMICOLON')
+    def command(self, p):
+        return p.proc_call
 
 
-    # proc_head
+    # Procedure header
     @_('PIDENTIFIER LPAREN args_decl RPAREN')
     def proc_head(self, p):
-        pass
+        return ("proc_head", p.PIDENTIFIER, p.args_decl)
 
 
-    # proc_call
+    # Procedure call
     @_('PIDENTIFIER LPAREN args RPAREN')
     def proc_call(self, p):
-        pass
+        return ("proc_call", p.PIDENTIFIER, p.args)
 
 
-    # declarations
+    # Declarations
     @_('declarations COMMA PIDENTIFIER')
     def declarations(self, p):
-        pass
+        self.symbol_table.add_variable(p.PIDENTIFIER)
+        return p.declarations + [("var", p.PIDENTIFIER)]
 
     @_('declarations COMMA PIDENTIFIER LBRACKET NUM COLON NUM RBRACKET')
     def declarations(self, p):
-        pass
+        self.symbol_table.add_array(p.PIDENTIFIER, p.NUM0, p.NUM1)
+        return p.declarations + [("array", p.PIDENTIFIER, p.NUM0, p.NUM1)]
 
     @_('PIDENTIFIER')
     def declarations(self, p):
-        pass
+        self.symbol_table.add_variable(p.PIDENTIFIER)
+        return [("var", p.PIDENTIFIER)]
 
     @_('PIDENTIFIER LBRACKET NUM COLON NUM RBRACKET')
     def declarations(self, p):
-        pass
+        self.symbol_table.add_array(p.PIDENTIFIER, p.NUM0, p.NUM1)
+        return [("array", p.PIDENTIFIER, p.NUM0, p.NUM1)]
 
 
-    # args_decl
+    # Arguments declarations
     @_('args_decl COMMA PIDENTIFIER')
     def args_decl(self, p):
-        pass
+        return p.args_decl + [("arg", p.PIDENTIFIER)]
 
     @_('args_decl COMMA T PIDENTIFIER')
     def args_decl(self, p):
-        pass
+        return p.args_decl + [("arg_array", p.PIDENTIFIER)]
 
     @_('PIDENTIFIER')
     def args_decl(self, p):
-        pass
+        return [("arg", p.PIDENTIFIER)]
 
     @_('T PIDENTIFIER')
     def args_decl(self, p):
-        pass
+        return [("arg_array", p.PIDENTIFIER)]
 
 
-    # args
+    # Arguments in procedure call
     @_('args COMMA PIDENTIFIER')
     def args(self, p):
-        pass
+        return p.args + [p.PIDENTIFIER]
 
     @_('PIDENTIFIER')
     def args(self, p):
-        pass
+        return [p.PIDENTIFIER]
 
 
-    # expression
+    # Expressions
     @_('value')
     def expression(self, p):
-        return p[0]
+        return p.value
 
     @_('value PLUS value')
     def expression(self, p):
-        return "add", p[0], p[2]
+        return ("add", p.value0, p.value1)
 
     @_('value MINUS value')
     def expression(self, p):
-        return "sub", p[0], p[2]
+        return ("sub", p.value0, p.value1)
 
     @_('value MULTIPLY value')
     def expression(self, p):
-        return "mul", p[0], p[2]
+        return ("mul", p.value0, p.value1)
 
     @_('value DIVIDE value')
     def expression(self, p):
-        return "div", p[0], p[2]
+        return ("div", p.value0, p.value1)
 
     @_('value MOD value')
     def expression(self, p):
-        return "mod", p[0], p[2]
+        return ("mod", p.value0, p.value1)
 
 
-    # condition
+    # Conditions
     @_('value EQUAL value')
     def condition(self, p):
-        return "eq", p[0], p[2]
+        return ("eq", p.value0, p.value1)
 
     @_('value NOTEQUAL value')
     def condition(self, p):
-        return "neq", p[0], p[2]
+        return ("neq", p.value0, p.value1)
 
     @_('value GREATER value')
     def condition(self, p):
-        return "gt", p[0], p[2]
+        return ("gt", p.value0, p.value1)
 
     @_('value LESS value')
     def condition(self, p):
-        return "lt", p[0], p[2]
+        return ("lt", p.value0, p.value1)
 
     @_('value GREATEREQUAL value')
     def condition(self, p):
-        return "geq", p[0], p[2]
+        return ("geq", p.value0, p.value1)
 
     @_('value LESSEQUAL value')
     def condition(self, p):
-        return "leq", p[0], p[2]
+        return ("leq", p.value0, p.value1)
 
 
-    # value
+    # Values
     @_('NUM')
     def value(self, p):
-        return "num", p[0]
+        return ("num", p.NUM)
 
     @_('identifier')
     def value(self, p):
-        return "load", p[0]
+        return ("id", p.identifier)
 
 
-    # identifier
+    # Identifiers
     @_('PIDENTIFIER')
     def identifier(self, p):
-        if p[0] in self.symbol_table or p[0] in self.symbol_table.iterators:
-            return p[0]
-        else:
-            return "undeclared", p[0]
-
-    @_('PIDENTIFIER LBRACKET PIDENTIFIER RBRACKET')
-    def identifier(self, p):
-        if p[0] in self.symbol_table and type(self.symbol_table[p[0]]) == Array:
-            if p[2] in self.symbol_table and type(self.symbol_table[p[2]]) == Variable:
-                return "array", p[0], ("load", p[2])
-            else:
-                return "array", p[0], ("load", ("undeclared", p[2]))
-        else:
-            raise Exception(f"Unknown array {p[0]} at {p.lineno}")
+        return (p.PIDENTIFIER)
 
     @_('PIDENTIFIER LBRACKET NUM RBRACKET')
     def identifier(self, p):
-        if p[0] in self.symbol_table and type(self.symbol_table[p[0]]) == Array:
-            return "array", p[0], p[2]
-        else:
-            raise Exception(f"Unknown array {p[0]} at {p.lineno}")
+        return ("array_access", p.PIDENTIFIER, ("num", p.NUM))
+
+    @_('PIDENTIFIER LBRACKET PIDENTIFIER RBRACKET')
+    def identifier(self, p):
+        return ("array_access", p.PIDENTIFIER, ("id", p.PIDENTIFIER))
 
 
-    # error
+    # Error handling
     def error(self, p):
         if p:
-            print(f'Syntax error: {p.type}')
+            print(f"Syntax error at token {p.type} ({p.value}) on line {p.lineno}")
         else:
             print("Syntax error at EOF")
+
 
 program = '''PROGRAM IS
     x, y, f[0:1]
 BEGIN
     x := 10;
     y := x + 2;
+    f[0] := 2;
+    f[1] := 3;
+    y := 2 + f[1];
     IF x < y THEN
         WRITE x;
     ELSE
         WRITE y;
     ENDIF
 END'''
+
+def pretty_print_ast(ast, indent=0):
+    if isinstance(ast, (str, int)):
+        print("  " * indent + str(ast))
+    elif isinstance(ast, tuple):
+        node_type = ast[0]
+        print("  " * indent + f"{node_type}:")
+        for child in ast[1:]:
+            pretty_print_ast(child, indent + 1)
+    elif isinstance(ast, list):
+        for item in ast:
+            pretty_print_ast(item, indent)
+    else:
+        print("  " * indent + repr(ast))
+
 
 if __name__ == "__main__":
     lexer = MyLexer()
@@ -274,6 +277,7 @@ if __name__ == "__main__":
         tokens = lexer.tokenize(program)
         result = parser.parse(tokens)
         print("AST:")
+        print(pretty_print_ast(result))
         print(result)
     except Exception as e:
         print(f"Error: {e}")
