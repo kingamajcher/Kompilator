@@ -160,12 +160,13 @@ class Value(Expression):
     def __str__(self):
         return str(self.value)
 
-class Identifier(Value):
-    def __init__(self, name, index=None):
+class Identifier:
+    def __init__(self, name, index=None, scope="global"):
         self.name = name
         self.index = index
+        self.scope = scope
 
     def __str__(self):
         if self.index:
-            return f"{self.name}[{self.index}]"
-        return self.name
+            return f"{self.name}[{self.index}] (Scope: {self.scope})"
+        return f"{self.name} (Scope: {self.scope})"

@@ -6,6 +6,7 @@ from ast_tree import *
 class MyParser(Parser):
     tokens = MyLexer.tokens
     symbol_table = SymbolTable()
+    current_scope = None
 
     precedence = (
         ('left', 'PLUS', 'MINUS'),
@@ -22,12 +23,30 @@ class MyParser(Parser):
     @_('procedures PROCEDURE proc_head IS declarations BEGIN commands END')
     def procedures(self, p):
         name, parameters = p.proc_head
+        try:
+            procedure_scope = self.symbol_table.add_procedure(name, parameters)
+            self.current_scope = procedure_scope  # Przełącz na lokalny zakres procedury
+            for declaration in p.declarations:
+                if isinstance(declaration, Declaration):
+                    if declaration.is_array:
+                        self.symbol_table.add_array(declaration.name, *declaration.bounds, self.current_scope)
+                    else:
+                        self.symbol_table.add_variable(declaration.name, self.current_scope)
+            commands = p.commands
+            self.current_scope = None  # Powrót do globalnego zakresu
+        except Exception as e:
+            print(f"Error while adding procedure '{name}': {e}")
         return Procedures(p.procedures.procedures + [Procedure(name, parameters, p.declarations, p.commands)])
 
     @_('procedures PROCEDURE proc_head IS BEGIN commands END')
     def procedures(self, p):
         name, parameters = p.proc_head
-        return Procedures(p.procedures.procedures + [Procedure(name, parameters, [], p.commands)])
+        # Dodaj procedurę do globalnej tablicy symboli
+        procedure_scope = self.symbol_table.add_procedure(name, parameters)
+        self.current_scope = procedure_scope.locals  # Przełącz na lokalny zakres procedury
+        commands = p.commands
+        self.current_scope = None  # Powrót do globalnego zakresu
+        return Procedures(p.procedures.procedures + [Procedure(name, parameters, [], commands)])
 
     @_('')
     def procedures(self, p):
@@ -111,23 +130,41 @@ class MyParser(Parser):
     # Declarations
     @_('declarations COMMA PIDENTIFIER')
     def declarations(self, p):
-        self.symbol_table.add_variable(p.PIDENTIFIER)
+        if self.current_scope:  # Jeśli jesteśmy w procedurze
+            self.current_scope.add_variable(p.PIDENTIFIER)
+        else:  # Jeśli jesteśmy w zakresie globalnym
+            self.symbol_table.add_variable(p.PIDENTIFIER)
         return p.declarations + [Declaration(p.PIDENTIFIER)]
 
     @_('declarations COMMA PIDENTIFIER LBRACKET NUM COLON NUM RBRACKET')
     def declarations(self, p):
-        self.symbol_table.add_array(p.PIDENTIFIER, p.NUM0, p.NUM1)
-        return p.declarations + [Declaration(p.PIDENTIFIER, (p.NUM0, p.NUM1))]
+        try:
+            if self.current_scope:  # Jeśli jesteśmy w procedurze
+                self.symbol_table.add_array(p.PIDENTIFIER, p.NUM, p.NUM1, self.current_scope)
+            else:  # Jeśli jesteśmy w zakresie globalnym
+                self.symbol_table.add_array(p.PIDENTIFIER, p.NUM, p.NUM1)
+        except Exception as e:
+            print(f"Error: {e}")
+        return p.declarations + [Declaration(p.PIDENTIFIER, (p.NUM, p.NUM1))]
 
     @_('PIDENTIFIER')
     def declarations(self, p):
-        self.symbol_table.add_variable(p.PIDENTIFIER)
+        if self.current_scope:
+            self.current_scope.add_variable(p.PIDENTIFIER)
+        else:
+            self.symbol_table.add_variable(p.PIDENTIFIER)
         return [Declaration(p.PIDENTIFIER)]
 
     @_('PIDENTIFIER LBRACKET NUM COLON NUM RBRACKET')
     def declarations(self, p):
-        self.symbol_table.add_array(p.PIDENTIFIER, p.NUM0, p.NUM1)
-        return [Declaration(p.PIDENTIFIER, (p.NUM0, p.NUM1))]
+        try:
+            if self.current_scope:
+                self.symbol_table.add_array(p.PIDENTIFIER, p.NUM, p.NUM1, self.current_scope)
+            else:
+                self.symbol_table.add_array(p.PIDENTIFIER, p.NUM, p.NUM1)
+        except Exception as e:
+            print(f"Error: {e}")
+        return [Declaration(p.PIDENTIFIER, (p.NUM, p.NUM1))]
 
 
     # Arguments declarations
