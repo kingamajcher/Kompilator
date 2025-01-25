@@ -25,7 +25,7 @@ class MyParser(Parser):
         ast = ("program", p.procedures, p.main)
         print(ast)
         code = self.generator.generate(ast)
-        return code
+        return code, ast
 
 
     # Procedures
@@ -253,17 +253,18 @@ class MyParser(Parser):
     @_('PIDENTIFIER LBRACKET NUM RBRACKET')
     def identifier(self, p):
         if p.PIDENTIFIER in self.symbol_table and type(self.symbol_table[p.PIDENTIFIER]) == Array:
-            if p.NUM in self.symbol_table and type(self.symbol_table[p.NUM]) == Variable:
-                return "array", p.PIDENTIFIER, ("id", p.NUM)
-            else:
-                return "array", p.PIDENTIFIER, ("id", ("undeclared", p.NUM))
+            return "array", p.PIDENTIFIER, p.NUM
         else:
             raise Exception(f"Undeclared array {p.PIDENTIFIER}")
+
 
     @_('PIDENTIFIER LBRACKET PIDENTIFIER RBRACKET')
     def identifier(self, p):
         if p.PIDENTIFIER0 in self.symbol_table and type(self.symbol_table[p.PIDENTIFIER0]) == Array:
-            return "array", p.PIDENTIFIER0, p.PIDENTIFIER1
+            if p.PIDENTIFIER1 in self.symbol_table and type(self.symbol_table[p.PIDENTIFIER1]) == Variable:
+                return "array", p.PIDENTIFIER0, ("id", p.PIDENTIFIER1)
+            else:
+                return "array", p.PIDENTIFIER0, ("id", ("undeclared", p.PIDENTIFIER1))
         else:
             raise Exception(f"Undeclared array {p.PIDENTIFIER0}")
 
@@ -276,19 +277,29 @@ class MyParser(Parser):
             print("Syntax error at EOF")
 
 
-program = '''PROGRAM IS
-    x, y, f[0:1]
+program1 = '''PROGRAM IS
+    x, y, f[0:1], c
 BEGIN
     x := 10;
     y := x + 2;
+    c := 0;
     f[0] := 2;
     f[1] := 3;
-    y := 2 + f[1];
+    y := 2 + f[c];
     IF x < y THEN
         WRITE x;
     ELSE
         WRITE y;
     ENDIF
+END'''
+
+program = '''PROGRAM IS
+    x, y, z
+BEGIN
+    READ x;
+    READ y;
+    z := x / y;
+    WRITE z;
 END'''
 
 def pretty_print_ast(ast, indent=0):
@@ -312,9 +323,15 @@ if __name__ == "__main__":
 
     try:
         tokens = lexer.tokenize(program)
-        result = parser.parse(tokens)
-        print("AST:")
-        print(pretty_print_ast(result))
-        print(result)
+        code, ast = parser.parse(tokens)
+        pretty_print_ast(ast)
+
+        print("\nGenerated Assembler Code:")
+        print(code)
+
+        with open("output.mr", "w") as f:
+            f.write(code)
+        print("\nAssembler code saved to 'output.mr'.")
+
     except Exception as e:
         print(f"Error: {e}")

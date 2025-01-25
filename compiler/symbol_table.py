@@ -67,7 +67,7 @@ class Procedure:
 class SymbolTable(dict):
     def __init__(self):
         super().__init__()
-        self.memory_offset = 0
+        self.memory_offset = 10
         self.consts = {}
         self.iterators = {}
         self.procedures = {}
@@ -117,10 +117,10 @@ class SymbolTable(dict):
         procedure = Procedure(name, parameters, local_variables, commands, base_memory_offset)
         self.procedures[name] = procedure
 
-        self.validate_procedure(name)
+        self.is_procedure_valid(name)
 
 
-    def validate_procedure(self, name):
+    def is_procedure_valid(self, name):
         procedure = self.get_procedure(name)
 
         for called_proc in procedure.called_procedures:
@@ -128,6 +128,34 @@ class SymbolTable(dict):
                 raise Exception(f"Error: Procedure {called_proc} called in {name} is not defined")
             if list(self.procedures.keys()).index(called_proc) > list(self.procedures.keys()).index(name):
                 raise Exception(f"Error: Procedure {called_proc} must be defined before it is called in {name}")
+            
+    def is_index_valid(self, array_name, index):
+        # Sprawdzenie, czy podana tablica istnieje
+        if array_name not in self or not isinstance(self[array_name], Array):
+            raise ValueError(f"Error: '{array_name}' is not a declared array.")
+
+        array = self[array_name]
+
+        # Jeśli indeks jest liczbą całkowitą, sprawdź, czy mieści się w zakresie
+        if isinstance(index, int):
+            return array.first_index <= index <= array.last_index
+
+        # Jeśli indeks jest zmienną, pobierz jej wartość
+        if isinstance(index, str):
+            # Użycie istniejącej metody `get_variable` do walidacji zmiennej
+            variable = self.get_variable(index)
+            if not isinstance(variable, Variable):
+                raise ValueError(f"Error: '{index}' is not a valid variable.")
+
+            # Zakładamy, że w runtime zmienna będzie miała przypisaną wartość.
+            # Tymczasowo symulujemy jej wartość jako `0` dla demonstracji.
+            resolved_value = variable.memory_offset  # Symulacja - zastąp właściwą wartością runtime
+
+            # Sprawdź, czy zdekodowana wartość mieści się w zakresie tablicy
+            return array.first_index <= resolved_value <= array.last_index
+
+        # Jeśli typ indeksu jest nieobsługiwany, zgłoś błąd
+        raise TypeError(f"Error: Unsupported index type '{type(index).__name__}'.")
 
     # getting iterator
     def get_iterator(self, name):
@@ -153,11 +181,11 @@ class SymbolTable(dict):
             raise ValueError(f"Error: Undeclared array '{name}'.")
         
     # getting address of variable or array
-    def get_address(self, target):
-        if isinstance(target, str):
-            return self.get_variable(target).memory_offset
-        elif isinstance(target, tuple):
-            return self.get_array_at(target[0], target[1])
+    def get_address(self, name):
+        if isinstance(name, str):
+            return self.get_variable(name).memory_offset
+        elif isinstance(name, tuple):
+            return self.get_array_at(name[0], name[1])
         
     # getting procedure
     def get_procedure(self, name):
