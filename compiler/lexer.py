@@ -62,11 +62,17 @@ class MyLexer(Lexer):
     @_(r'\d+')
     def NUM(self, t):
         t.value = int(t.value)
-        return t
+        if self._is_in_range(t.value):
+            return t
+        else:
+            raise Exception(f"Error: Value '{t.value}' not in range on line {self.lineno}")
 
     def error(self, t):
-        print(f"Unknown symbol: {t.value[0]!r} on line {self.lineno}")
+        raise Exception(f"Error: Unknown symbol: {t.value[0]} on line {self.lineno}")
         self.index += 1
+
+    def _is_in_range(self, value):
+        return value <= 2**63 - 1
 
     
 
@@ -78,24 +84,11 @@ if __name__ == '__main__':
     # > 6765
 
     PROGRAM IS
-        f[0:100], s[0:100], i[0:100], n, j, k, l
+        f[0:100], s[0:100], i[0:100], n
     BEGIN
         READ n;
         f[0] := 0;
-        s[0] := 1;
-        i[0] := 0;
-        f[1] := 1;
-        s[1] := 1;
-        i[1] := 1;
-        FOR j FROM 2 TO n DO
-            k := j - 1;
-            l := k - 1;
-        i[j] := i[k] + 1;
-        f[j] := f[k] + f[l];
-            s[j] := s[k] * i[j];
-        ENDFOR
-        WRITE s[n];
-        WRITE f[n];
+        s[0] := 19;
     END
     '''
 
