@@ -236,6 +236,11 @@ class MyParser(Parser):
     @_('NUM')
     def value(self, p):
         return "num", p.NUM
+    
+    @_('MINUS NUM')
+    def value(self, p):
+        value = -(p.NUM)
+        return "num", value
 
     @_('identifier')
     def value(self, p):
@@ -298,7 +303,7 @@ program = '''PROGRAM IS
 BEGIN
     READ x;
     READ y;
-    z := x / y;
+    z := -2 + 3;
     WRITE z;
 END'''
 

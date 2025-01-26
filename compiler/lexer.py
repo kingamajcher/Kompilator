@@ -27,7 +27,6 @@ class MyLexer(Lexer):
     T = r'T'
 
     PIDENTIFIER = r'[_a-z]+'
-    NUM = r'-?\d+'
 
     ASSIGN = r':='
     NOTEQUAL = r'!='
@@ -49,7 +48,7 @@ class MyLexer(Lexer):
     LPAREN = r'\('
     RPAREN = r'\)'
 
-    
+    NUM = r'\d+'
 
     ignore = ' \t'
 
