@@ -34,25 +34,31 @@ class CodeGenerator:
     def generate_code_command(self, command):
         if command[0] == "assign":
             _, identifier, expression = command
-            self.assign(identifier, expression)
+            self.generate_assign(identifier, expression)
         elif command[0] == "if_else":
             _, condition, true_commands, false_commands, constants = command
+            self.generate_if_else(condition, true_commands, false_commands)
         elif command[0] == "if":
             _, condition, true_commands, constants = command
+            self.generate_if(condition, true_commands)
         elif command[0] == 'while':
             _, condition, commands, constants = command
+            self.generate_while(condition, commands)
         elif command[0] == "repeat":
             _, commands, condition, constants = command
+            self.generate_repeat(commands, condition)
         elif command[0] == "for_to":
             _, iterator, start_value, end_value, commands, constants = command
+            self.generate_for(iterator, start_value, end_value, commands, False)
         elif command[0] == "for_downto":
             _, iterator, start_value, end_value, commands, constants = command
+            self.generate_for(iterator, start_value, end_value, commands, True)
         elif command[0] == "read":
             _, identifier = command
-            self.read(identifier)
+            self.generate_read(identifier)
         elif command[0] == "write":
             _, value = command
-            self.write(value)
+            self.generate_write(value)
         elif command[0] == "proc_call":
             _, proc_name, args = command
 
@@ -62,7 +68,7 @@ class CodeGenerator:
         if expression[0] == "num":
             self.code.append(f"SET {expression[1]}")
         elif expression[0] == "id":
-            self.expression_id(expression[1])
+            self.handle_id(expression[1])
         elif expression[0] == "plus":
             self.add(expression)
         elif expression[0] == "minus":
@@ -76,44 +82,51 @@ class CodeGenerator:
         else:
             raise Exception(f"Error: Invalid expression type '{expression[0]}'")
 
-    def expression_id(self, expr):
+    def handle_id(self, expression):
         # handling of undeclared variables
-        if expr[0] == "undeclared":
-            if expr[1] in self.symbol_table.iterators:
-                iterator_addr = self.symbol_table.get_iterator(expr[1])
-                self.code.append(f"LOAD {iterator_addr}")
+        if expression[0] == "undeclared":
+            if expression[1] in self.symbol_table.iterators:
+                iterator_address = self.symbol_table.get_iterator(expression[1])
+                self.code.append(f"LOAD {iterator_address}")
             else:
-                raise Exception(f"Error: undeclared variable '{expr[1]}'")
+                raise Exception(f"Error: undeclared variable '{expression[1]}'")
         # handling of array indices
-        elif expr[0] == "array":
-            name = expr[1]
-            index = expr[2]
+        elif expression[0] == "array":
+            name = expression[1]
+            index = expression[2]
 
-            # tu cos bedzie ale mi sie nie chce
+            address = self.handle_array_at_index(name, index)
+
+            if address == 0:
+                self.code.append(f"LOADI 1")
+            else:
+                self.code.append(f"LOAD {address}")
+
+
         # handling of variables
-        elif isinstance(expr[0], str):
-            name = expr[0]
+        elif isinstance(expression[0], str):
+            name = expression[0]
             if name in self.symbol_table:
                 address = self.symbol_table.get_address(name)
                 self.code.append(f"LOAD {address}")
             else:
-                raise Exception("Error: unknown variable '{name}'")
+                raise Exception(f"Error: unknown variable '{name}'")
         else:
             raise Exception("Error: wrong expression id format")
         
-    def assign(self, variable, expression):
+    def generate_assign(self, variable, expression):
         if isinstance(variable, tuple):
             if variable[0] == "undeclared":
                 if variable[1] in self.symbol_table.iterators:
-                    raise Exception(f"Error: cannot assign value to iterator '{variable[1]}'")
+                    raise Exception(f"Error: Cannot assign value to iterator '{variable[1]}'")
                 else:
                     raise Exception(f"Error: Undeclared variable '{variable[1]}'")
             elif variable[0] == "array":
                 name = variable[1]
                 index = variable[2]
-                address = self.array_index(name, index)
+                address = self.handle_array_at_index(name, index)
                 self.generate_code_expression(expression)
-                if (address != 0):
+                if address != 0:
                     self.code.append(f"STORE {address}")
                 else:
                     self.code.append(f'STOREI 1')
@@ -125,8 +138,23 @@ class CodeGenerator:
                 self.code.append(f"STORE {address}")
             else:
                 raise Exception(f"Error: Assigning to invalid type")
+            
+    def generate_if_else(self, condition, true_commands, false_commands):
+        pass
+
+    def generate_if(self, condition, true_commands):
+        pass
+
+    def generate_while(self, condition, commands):
+        pass
+
+    def generate_repeat(self, commands, condition):
+        pass
+
+    def generate_for(self, iterator, start_value, end_value, commands, downto):
+        pass
     
-    def write(self, value):
+    def generate_write(self, value):
         if value[0] == "id":
             if isinstance(value[1], tuple):
                 pass
@@ -139,7 +167,7 @@ class CodeGenerator:
         else:
             raise Exception(f"Error: invalid value type '{value[0]}' for WRITE")
 
-    def read(self, identifier):
+    def generate_read(self, identifier):
         if isinstance(identifier, tuple):
             #tablice i undeclared
             #to sie kiedys dorobi xd
@@ -349,3 +377,36 @@ class CodeGenerator:
     def modulo(self, expression):
         pass
 
+    def handle_array_at_index(self, name, index):
+        address = 0
+        # w 1 przechowujemy adres komórki tablicy jesli nie odwołujemy sie do niej przez liczbe
+        first_index = self.symbol_table[name].first_index
+        memory_offset_of_first_index = self.symbol_table.get_address([name, first_index])
+        array_offset = memory_offset_of_first_index - first_index
+
+        if isinstance(index, int):
+            address = self.symbol_table.get_address([name, index])
+        elif isinstance(index, tuple) and index[0] == "id":
+            if isinstance(index[1], tuple) and index[1][0] == "undeclared":
+                if index[1][1] in self.symbol_table.iterators:
+                    iterator_address = self.symbol_table.get_iterator(index[1][1])
+                    self.emit(f"SET {array_offset}")
+                    self.emit(f"ADD {iterator_address}")
+                    self.emit(f"STORE 1")
+                    #sprawdzanie czy jest w zakresie
+                else:
+                    raise Exception(f"Undeclared index variable '{index[1][1]}'.")
+            elif isinstance(index[1], str):
+                name = index[1]
+                variable_address = self.symbol_table.get_address(name)
+                if not self.symbol_table[name].initialized:
+                    raise Exception(f"Error: Uninitialized variable '{name}'")
+                self.code.append(f"SET {array_offset}")
+                self.code.append(f"ADD {variable_address}")
+                self.code.append("STORE 1")
+                # moze dodac sprawdzanie czy jest w zakresie
+            else:
+                raise Exception(f"Error: Invalid index type '{index}'")
+        else:
+            raise Exception(f"Error: Invalid index type '{index}'")
+        return address

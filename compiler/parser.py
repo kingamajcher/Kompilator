@@ -303,12 +303,12 @@ BEGIN
 END'''
 
 program = '''PROGRAM IS
-    x, y, z, f[-1:1]
+    x, f[0:1]
 BEGIN
-    READ x;
-    READ y;
-    z := x - y;
-    WRITE z;
+    f[0] := 1;
+    f[1] := 5;
+    x := f[0] + f[1];
+    WRITE x;
 END'''
 
 def pretty_print_ast(ast, indent=0):

@@ -69,7 +69,6 @@ class MyLexer(Lexer):
 
     def error(self, t):
         raise Exception(f"Error: Unknown symbol: {t.value[0]} on line {self.lineno}")
-        self.index += 1
 
     def _is_in_range(self, value):
         return value <= 2**63 - 1
