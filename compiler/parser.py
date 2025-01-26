@@ -136,20 +136,20 @@ class MyParser(Parser):
         self.symbol_table.add_variable(p.PIDENTIFIER)
         return p.declarations + [("var", p.PIDENTIFIER)]
 
-    @_('declarations COMMA PIDENTIFIER LBRACKET NUM COLON NUM RBRACKET')
+    @_('declarations COMMA PIDENTIFIER LBRACKET number COLON number RBRACKET')
     def declarations(self, p):
-        self.symbol_table.add_array(p.PIDENTIFIER, p.NUM0, p.NUM1)
-        return p.declarations + [("array", p.PIDENTIFIER, p.NUM0, p.NUM1)]
+        self.symbol_table.add_array(p.PIDENTIFIER, p.number0, p.number1)
+        return p.declarations + [("array", p.PIDENTIFIER, p.number0, p.number1)]
 
     @_('PIDENTIFIER')
     def declarations(self, p):
         self.symbol_table.add_variable(p.PIDENTIFIER)
         return [("var", p.PIDENTIFIER)]
 
-    @_('PIDENTIFIER LBRACKET NUM COLON NUM RBRACKET')
+    @_('PIDENTIFIER LBRACKET number COLON number RBRACKET')
     def declarations(self, p):
-        self.symbol_table.add_array(p.PIDENTIFIER, p.NUM0, p.NUM1)
-        return [("array", p.PIDENTIFIER, p.NUM0, p.NUM1)]
+        self.symbol_table.add_array(p.PIDENTIFIER, p.number0, p.number1)
+        return [("array", p.PIDENTIFIER, p.number0, p.number1)]
 
 
     # Arguments declarations
@@ -230,17 +230,21 @@ class MyParser(Parser):
     @_('value LESSEQUAL value')
     def condition(self, p):
         return "lessequal", p.value0, p.value1
+    
+    # Numbers
+    @_('NUM')
+    def number(self, p):
+        return p.NUM
+
+    @_('MINUS NUM')
+    def number(self, p):
+        return -p.NUM
 
 
     # Values
-    @_('NUM')
+    @_('number')
     def value(self, p):
-        return "num", p.NUM
-    
-    @_('MINUS NUM')
-    def value(self, p):
-        value = -(p.NUM)
-        return "num", value
+        return "num", p.number
 
     @_('identifier')
     def value(self, p):
@@ -255,10 +259,10 @@ class MyParser(Parser):
         else:
             return "Undeclared pidentifier ", p.PIDENTIFIER
 
-    @_('PIDENTIFIER LBRACKET NUM RBRACKET')
+    @_('PIDENTIFIER LBRACKET number RBRACKET')
     def identifier(self, p):
         if p.PIDENTIFIER in self.symbol_table and type(self.symbol_table[p.PIDENTIFIER]) == Array:
-            return "array", p.PIDENTIFIER, p.NUM
+            return "array", p.PIDENTIFIER, p.number
         else:
             raise Exception(f"Undeclared array {p.PIDENTIFIER}")
 
@@ -283,7 +287,7 @@ class MyParser(Parser):
 
 
 program1 = '''PROGRAM IS
-    x, y, f[0:1], c
+    x, y, f[-1:1], c
 BEGIN
     x := 10;
     y := x + 2;
@@ -299,11 +303,11 @@ BEGIN
 END'''
 
 program = '''PROGRAM IS
-    x, y, z
+    x, y, z, f[-1:1]
 BEGIN
     READ x;
     READ y;
-    z := -2 + 3;
+    z := x - y;
     WRITE z;
 END'''
 

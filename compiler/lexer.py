@@ -24,9 +24,6 @@ class MyLexer(Lexer):
     IF = r'IF'
     IS = r'IS'
     TO = r'TO'
-    T = r'T'
-
-    PIDENTIFIER = r'[_a-z]+'
 
     ASSIGN = r':='
     NOTEQUAL = r'!='
@@ -49,6 +46,8 @@ class MyLexer(Lexer):
     RPAREN = r'\)'
 
     NUM = r'\d+'
+    T = r'T'
+    PIDENTIFIER = r'[_a-z]+'
 
     ignore = ' \t'
 
@@ -60,6 +59,7 @@ class MyLexer(Lexer):
     def ignore_newline(self, t):
         self.lineno += t.value.count('\n')
 
+    @_(r'\d+')
     def NUM(self, t):
         t.value = int(t.value)
         return t
