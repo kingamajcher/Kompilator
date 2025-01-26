@@ -188,6 +188,7 @@ class CodeGenerator:
             # p6 -> k
             # p7 -> pomocnicze abs(a)
             # p8 -> pomocnicze abs(b)
+            # p9 -> pomocnicze (nie ważne co tam jest)
 
             # znaki dzielonych wartości
             self.code.append("SET 0")
@@ -200,12 +201,13 @@ class CodeGenerator:
             # k
             self.code.append("SET 1")
             self.code.append("STORE 6")
+            self.code.append("STORE 9")
 
             # ładujemy dzielną
             self.generate_code_expression(dividend)
 
             # jesli jest zerem to dziki skok na koniec zeby zwracalo od razu zero
-            self.code.append("JZERO 66")
+            self.code.append("JZERO 80")
 
             # jesli niedodatnie to wykona, jeśli dodatnie to skoczy o 6
             self.code.append("JPOS 6")
@@ -229,13 +231,28 @@ class CodeGenerator:
             self.generate_code_expression(divisor)
 
             # jesli jest 0 to dziki jump do konca i zwraca 0
-            self.code.append("JZERO 56")
+            self.code.append("JZERO 70")
 
             # jesli jest 1 to dziki jump i zwraca dzielną
+            self.code.append("STORE 2")
+            
+            self.code.append("SUB 9")
+            self.code.append("JZERO 2")
+            self.code.append("JUMP 10")
+            self.code.append("LOAD 3")
+            self.code.append("JZERO 5")
+            self.code.append("LOAD 5")
+            self.code.append("SUB 1")
+            self.code.append("STORE 5")
+            self.code.append("JUMP 3")
+            self.code.append("LOAD 1")
+            self.code.append("STORE 5")
+            self.code.append("JUMP 57")
 
             # jesli jest 2 to dziki jump do robienia half i zwraca wartośc
 
             # jesli niedodatnie to wykona, jeśli dodatnie to skoczy o 6
+            self.code.append("LOAD 2")
             self.code.append("JPOS 6")
 
             # ustawiamy wartość dzielnika 
