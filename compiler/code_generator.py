@@ -74,7 +74,7 @@ class CodeGenerator:
         elif expression[0] == "minus":
             self.substract(expression)
         elif expression[0] == "multiply":
-            pass
+            self.multiply(expression)
         elif expression[0] == "divide":
             self.divide(expression)
         elif expression[0] == "mod":
@@ -192,20 +192,110 @@ class CodeGenerator:
         self.code.append("SUB 1")
 
     def multiply(self, expression):
-        pass
+        a = expression[1]
+        b = expression[2]
+
+        if a[0] == "num" and b[0] == "num":
+            result = a[1] * b[1]
+            self.code.append(f"SET {result}")
+        else:
+            # p1 -> abs(a)
+            # p2 -> abs(b)
+            # p3 -> sign(a)
+            # p4 -> sign(b)
+            # p5 -> wynik
+            # p6 -> pomocnicze b
+
+            # znaki mnożonych wartości i wynik wstępnie ujstawiony na 0
+            self.code.append("SUB 0")
+            self.code.append("STORE 5")
+            
+            # ładujemy a
+            self.generate_code_expression(a)
+
+            # jesli ujemna to zmiana flagi znaku i wartosc bezwgledna
+            self.code.append("JPOS 6")
+            self.code.append("STORE 1")
+            self.code.append("SET 1")
+            self.code.append("STORE 3")
+
+            self.code.append("SUB 0")
+            self.code.append("SUB 1")
+            self.code.append("STORE 1")
+
+            # ładujemy b
+            self.generate_code_expression(b)
+
+            # jesli ujemna to zmiana flagi znaku i wartosc bezwgledna
+            self.code.append("JPOS 6")
+            self.code.append("STORE 2")
+            self.code.append("SET -1")
+            self.code.append("STORE 4")
+
+            self.code.append("SUB 0")
+            self.code.append("SUB 2")
+            self.code.append("STORE 2")
+
+            #sprawdzanie czy sa zerami, jak tak to konczymy
+            self.code.append("LOAD 1")
+            self.code.append("JZERO 25")
+            self.code.append("LOAD 2")
+            self.code.append("JZERO 23")
+
+            # mnozenie
+
+            # sprawdzmy czy b jest nieparzyste
+            self.code.append("LOAD 2")
+            self.code.append("HALF")
+            self.code.append("STORE 6")
+
+            self.code.append("ADD 0")
+            self.code.append("SUB 2")
+            self.code.append("JZERO 4")
+
+            # dodaj a do wyniku
+            self.code.append("LOAD 5")
+            self.code.append("ADD 1")
+            self.code.append("STORE 5")
+
+            # a = a*2
+            self.code.append("LOAD 1")
+            self.code.append("ADD 0")
+            self.code.append("STORE 1")
+
+            # b = b/2
+            self.code.append("LOAD 2")
+            self.code.append("HALF")
+            self.code.append("STORE 2")
+
+            self.code.append("JPOS -15")
+
+            # zmiana znaku jesli potrzebna
+            self.code.append("LOAD 3")
+            self.code.append("ADD 4")
+            self.code.append("JZERO 4")
+
+            self.code.append("SUB 0")
+            self.code.append("SUB 5")
+            self.code.append("STORE 5")
+
+            self.code.append("LOAD 5")
+
+
+
+
+
 
     def divide(self, expression):
-        dividend = expression[1] # a
-        divisor = expression[2] # b
+        a = expression[1] # a
+        b = expression[2] # b
 
-        print(dividend[0])
-        print(divisor[0])
-        if divisor[0] == "num" and divisor[1] == 0:
-            self.code.append("SET 0")
-        elif dividend[0] == "num" and dividend[1] == 0:
-            self.code.append("SET 0")
-        elif dividend[0] == "num" and divisor[0] == "num":
-            result = dividend[1] // divisor[1]
+        if b[0] == "num" and b[1] == 0:
+            self.code.append("SUB 0")
+        elif a[0] == "num" and a[1] == 0:
+            self.code.append("SUB 0")
+        elif a[0] == "num" and b[0] == "num":
+            result = a[1] // b[1]
             self.code.append(f"SET {result}")
         else:
             # p1 -> abs(a)
@@ -219,7 +309,7 @@ class CodeGenerator:
             # p9 -> pomocnicze (nie ważne co tam jest)
 
             # znaki dzielonych wartości
-            self.code.append("SET 0")
+            self.code.append("SUB 0")
             self.code.append("STORE 3")
             self.code.append("STORE 4")
 
@@ -232,7 +322,7 @@ class CodeGenerator:
             self.code.append("STORE 9")
 
             # ładujemy dzielną
-            self.generate_code_expression(dividend)
+            self.generate_code_expression(a)
 
             # jesli jest zerem to dziki skok na koniec zeby zwracalo od razu zero
             self.code.append("JZERO 80")
@@ -248,7 +338,7 @@ class CodeGenerator:
             self.code.append("STORE 3")
 
             # zmieniamy znak aby było dodatnie
-            self.code.append("SET 0")
+            self.code.append("SUB 0")
             self.code.append("SUB 1")
             self.code.append("STORE 1")
 
@@ -256,7 +346,7 @@ class CodeGenerator:
             self.code.append("STORE 7")
             
             # ładujemy dzielnik
-            self.generate_code_expression(divisor)
+            self.generate_code_expression(b)
 
             # jesli jest 0 to dziki jump do konca i zwraca 0
             self.code.append("JZERO 70")
@@ -291,7 +381,7 @@ class CodeGenerator:
             self.code.append("STORE 4")
 
             # zmieniamy znak aby było dodatnie
-            self.code.append("SET 0")
+            self.code.append("SUB 0")
             self.code.append("SUB 2")
             self.code.append("STORE 2")
 
@@ -367,7 +457,7 @@ class CodeGenerator:
             self.code.append("JZERO 4")
 
             # zmiana znaku jeśli jest taka potrzeba
-            self.code.append("SET 0")
+            self.code.append("SUB 0")
             self.code.append("SUB 5")
             self.code.append("STORE 5")
 
