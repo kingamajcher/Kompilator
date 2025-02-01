@@ -4,6 +4,8 @@ class CodeGenerator:
     def __init__(self, symbol_table):
         self.symbol_table = symbol_table
         self.code = []
+        self.iterators = []
+        self.current_procedure = None
 
     def generate(self, ast):
         if ast[0] == 'program':
@@ -61,6 +63,7 @@ class CodeGenerator:
             self.generate_write(value)
         elif command[0] == "proc_call":
             _, proc_name, args = command
+            self.generate_proc_call(proc_name, args)
 
 
 
@@ -78,7 +81,8 @@ class CodeGenerator:
         elif expression[0] == "divide":
             self.divide(expression)
         elif expression[0] == "mod":
-            pass
+            self.divide(expression)
+            self.code.append("LOAD 7")
         else:
             raise Exception(f"Error: Invalid expression type '{expression[0]}'")
 
@@ -179,6 +183,9 @@ class CodeGenerator:
             # może trzeba pomyślec nad obsługa iteratorów bo ich chyba nie można read
             self.code.append(f"GET {address}")
 
+    def generate_proc_call(self, proc_name, args):
+        pass
+
     def add(self, expression):
         self.generate_code_expression(expression[1])
         self.code.append("STORE 1")
@@ -192,6 +199,7 @@ class CodeGenerator:
         self.code.append("SUB 1")
 
     def multiply(self, expression):
+        # a * b
         a = expression[1]
         b = expression[2]
 
@@ -204,7 +212,7 @@ class CodeGenerator:
             # p3 -> sign(a)
             # p4 -> sign(b)
             # p5 -> wynik
-            # p6 -> pomocnicze b
+            # p6 -> pomocnicze b do sprawdzania nieparzystości
 
             # znaki mnożonych wartości i wynik wstępnie ujstawiony na 0
             self.code.append("SUB 0")
@@ -280,10 +288,6 @@ class CodeGenerator:
             self.code.append("STORE 5")
 
             self.code.append("LOAD 5")
-
-
-
-
 
 
     def divide(self, expression):
@@ -454,18 +458,29 @@ class CodeGenerator:
             # sprawdzanie znaku
             self.code.append("LOAD 3")
             self.code.append("ADD 4")
-            self.code.append("JZERO 4")
+            self.code.append("JZERO 10")
 
-            # zmiana znaku jeśli jest taka potrzeba
+            self.code.append("LOAD 2")
+            self.code.append("SUB 7")
+            self.code.append("STORE 7")
+
+            self.code.append("LOAD 5")
+            self.code.append("ADD 9")
+            self.code.append("STORE 5")
             self.code.append("SUB 0")
             self.code.append("SUB 5")
             self.code.append("STORE 5")
 
+            self.code.append("LOAD 4")
+            self.code.append("JZERO 4")
+            self.code.append("SUB 0")
+            self.code.append("SUB 7")
+            self.code.append("STORE 7")
             self.code.append("LOAD 5")
 
-
     def modulo(self, expression):
-        pass
+        self.divide(expression)
+        self.code.append("LOAD 7")
 
     def handle_array_at_index(self, name, index):
         address = 0
@@ -480,9 +495,9 @@ class CodeGenerator:
             if isinstance(index[1], tuple) and index[1][0] == "undeclared":
                 if index[1][1] in self.symbol_table.iterators:
                     iterator_address = self.symbol_table.get_iterator(index[1][1])
-                    self.emit(f"SET {array_offset}")
-                    self.emit(f"ADD {iterator_address}")
-                    self.emit(f"STORE 1")
+                    self.code.append(f"SET {array_offset}")
+                    self.code.append(f"ADD {iterator_address}")
+                    self.code.append(f"STORE 1")
                     #sprawdzanie czy jest w zakresie
                 else:
                     raise Exception(f"Undeclared index variable '{index[1][1]}'.")
@@ -500,3 +515,34 @@ class CodeGenerator:
         else:
             raise Exception(f"Error: Invalid index type '{index}'")
         return address
+
+    def check_condition(self, condition):
+        condition_type = condition[0]
+        left = condition[1]
+        right = condition[2]
+
+        if left[0] == "num" and right[0] == "num":
+            left_value = left[1]
+            right_value = right[1]
+            if condition_type == "equal":
+                return left_value == right_value
+            elif condition_type == "notequal":
+                return left_value != right_value
+            elif condition_type == "greater":
+                return left_value > right_value
+            elif condition_type == "less":
+                return left_value > right_value
+            elif condition_type == "greaterequal":
+                return left_value >= right_value
+            elif condition_type == "lessequal":
+                return left_value <= right_value
+            else:
+                raise Exception(f"Error: Invalid condition type '{condition_type}'")
+        elif left == right:
+            if condition_type in ["equal", "greaterequal", "lessequal"]:
+                return True
+            else:
+                return False
+        else:
+            return None
+        
