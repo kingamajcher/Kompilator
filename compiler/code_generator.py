@@ -36,55 +36,55 @@ class CodeGenerator:
     def generate_code_command(self, command):
         if command[0] == "assign":
             _, identifier, expression = command
-            self.generate_assign(identifier, expression)
+            self.generate_code_assign(identifier, expression)
         elif command[0] == "if_else":
             _, condition, true_commands, false_commands, constants = command
-            self.generate_if_else(condition, true_commands, false_commands)
+            self.generate_code_if_else(condition, true_commands, false_commands)
         elif command[0] == "if":
             _, condition, true_commands, constants = command
-            self.generate_if(condition, true_commands)
+            self.generate_code_if(condition, true_commands)
         elif command[0] == 'while':
             _, condition, commands, constants = command
-            self.generate_while(condition, commands)
+            self.generate_code_while(condition, commands)
         elif command[0] == "repeat":
             _, commands, condition, constants = command
-            self.generate_repeat(commands, condition)
+            self.generate_code_repeat(commands, condition)
         elif command[0] == "for_to":
             _, iterator, start_value, end_value, commands, constants = command
-            self.generate_for(iterator, start_value, end_value, commands, False)
+            self.generate_code_for(iterator, start_value, end_value, commands, False)
         elif command[0] == "for_downto":
             _, iterator, start_value, end_value, commands, constants = command
-            self.generate_for(iterator, start_value, end_value, commands, True)
+            self.generate_code_for(iterator, start_value, end_value, commands, True)
         elif command[0] == "read":
             _, identifier = command
-            self.generate_read(identifier)
+            self.generate_code_read(identifier)
         elif command[0] == "write":
             _, value = command
-            self.generate_write(value)
+            self.generate_code_write(value)
         elif command[0] == "proc_call":
             _, proc_name, args = command
-            self.generate_proc_call(proc_name, args)
+            self.generate_code_proc_call(proc_name, args)
 
 
 
     def generate_code_expression(self, expression):
-        if expression[0] == "num":
+        expression_type = expression[0]
+        if expression_type == "num":
             self.code.append(f"SET {expression[1]}")
-        elif expression[0] == "id":
+        elif expression_type == "id":
             self.handle_id(expression[1])
-        elif expression[0] == "plus":
+        elif expression_type == "add":
             self.add(expression)
-        elif expression[0] == "minus":
+        elif expression_type == "substract":
             self.substract(expression)
-        elif expression[0] == "multiply":
+        elif expression_type == "multiply":
             self.multiply(expression)
-        elif expression[0] == "divide":
+        elif expression_type == "divide":
             self.divide(expression)
-        elif expression[0] == "mod":
-            self.divide(expression)
-            self.code.append("LOAD 7")
+        elif expression_type == "mod":
+            self.modulo(expression)
         else:
-            raise Exception(f"Error: Invalid expression type '{expression[0]}'")
+            raise Exception(f"Error: Invalid expression type '{expression_type}'")
 
     def handle_id(self, expression):
         # handling of undeclared variables
@@ -118,7 +118,7 @@ class CodeGenerator:
         else:
             raise Exception("Error: wrong expression id format")
         
-    def generate_assign(self, variable, expression):
+    def generate_code_assign(self, variable, expression):
         if isinstance(variable, tuple):
             if variable[0] == "undeclared":
                 if variable[1] in self.symbol_table.iterators:
@@ -143,7 +143,7 @@ class CodeGenerator:
             else:
                 raise Exception(f"Error: Assigning to invalid type")
             
-    def generate_if_else(self, condition, true_commands, false_commands):
+    def generate_code_if_else(self, condition, true_commands, false_commands):
         simplified_condition = self.simplify_condition_if_possible(condition)
         if simplified_condition == True:
                 self.generate_code_commands(true_commands)
@@ -165,11 +165,12 @@ class CodeGenerator:
                 self.code[i] = self.code[i].replace("end", end)
 
 
-    def generate_if(self, condition, true_commands):
+    def generate_code_if(self, condition, true_commands):
         simplified_condition = self.simplify_condition_if_possible(condition)
-        if simplified_condition is True or simplified_condition is False:
-            if simplified_condition:
-                self.generate_code_commands(true_commands)
+        if simplified_condition == True:
+            self.generate_code_commands(true_commands)
+        elif simplified_condition == False:
+            pass
         else:
             condition_start = len(self.code)
             self.generate_condition_jumps(simplified_condition)
@@ -181,7 +182,7 @@ class CodeGenerator:
                 self.code[i] = self.code[i].replace("end", end_of_if)
 
 
-    def generate_while(self, condition, commands):
+    def generate_code_while(self, condition, commands):
         simplified_condition = self.simplify_condition_if_possible(condition)
         if simplified_condition == True:
             raise Exception("Error: Infinite loop")
@@ -199,7 +200,7 @@ class CodeGenerator:
                 end = str(loop_end - i)
                 self.code[i] = self.code[i].replace("end", end)
 
-    def generate_repeat(self, commands, condition):
+    def generate_code_repeat(self, commands, condition):
         simplified_condition = self.simplify_condition_if_possible(condition)
         if simplified_condition == True:
             self.generate_code_commands(commands)
@@ -218,10 +219,22 @@ class CodeGenerator:
             self.code.append(f"JUMP {jump}")
 
 
-    def generate_for(self, iterator, start_value, end_value, commands, downto):
-        pass
+    def generate_code_for(self, iterator, start_value, end_value, commands, downto):
+        if start_value[0] == "num" and end_value[0] == "num":
+            if downto:
+                if start_value[1] > end_value[1]:
+                    raise Exception("Error: Invalid range for loop")
+            else:
+                if start_value[1] < end_value[1]:
+                    raise Exception("Error: Invalid range for loop")
+                
+        if iterator in self.symbol_table:
+            raise Exception(f"Error: Redeclaration of iterator '{iterator}'")
+        
+
+        
     
-    def generate_write(self, value):
+    def generate_code_write(self, value):
         if value[0] == "id":
             if isinstance(value[1], tuple):
                 pass
@@ -234,7 +247,7 @@ class CodeGenerator:
         else:
             raise Exception(f"Error: invalid value type '{value[0]}' for WRITE")
 
-    def generate_read(self, identifier):
+    def generate_code_read(self, identifier):
         if isinstance(identifier, tuple):
             #tablice i undeclared
             #to sie kiedys dorobi xd
@@ -246,7 +259,7 @@ class CodeGenerator:
             # może trzeba pomyślec nad obsługa iteratorów bo ich chyba nie można read
             self.code.append(f"GET {address}")
 
-    def generate_proc_call(self, proc_name, args):
+    def generate_code_proc_call(self, proc_name, args):
         pass
 
     def add(self, expression):
