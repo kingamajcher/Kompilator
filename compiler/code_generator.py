@@ -200,7 +200,23 @@ class CodeGenerator:
                 self.code[i] = self.code[i].replace("end", end)
 
     def generate_repeat(self, commands, condition):
-        pass
+        simplified_condition = self.simplify_condition_if_possible(condition)
+        if simplified_condition == True:
+            self.generate_code_commands(commands)
+        elif simplified_condition == False:
+            raise Exception("Error: Infinite loop")
+        else:
+            loop_start = len(self.code)
+            self.generate_code_commands(commands)
+            condition_start = len(self.code)
+            self.generate_condition_jumps(simplified_condition)
+            loop_end = len(self.code)
+            for i in range(condition_start, loop_end):
+                self.code[i] = self.code[i].replace("end", str(2))
+            self.code.append(f"JUMP 2")
+            jump = str(-(loop_end - loop_start + 1))
+            self.code.append(f"JUMP {jump}")
+
 
     def generate_for(self, iterator, start_value, end_value, commands, downto):
         pass
