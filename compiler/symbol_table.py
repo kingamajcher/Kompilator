@@ -16,8 +16,10 @@ class Array:
     
 
 class Variable:
-    def __init__(self, memory_offset):
+    def __init__(self, memory_offset, is_local = False, is_parameter = False):
         self.memory_offset = memory_offset
+        self.is_local = is_local
+        self.is_parameter = is_parameter
         self.initialized = False
 
     def __str__(self):
@@ -36,23 +38,14 @@ class Iterator:
     
 
 class Procedure:
-    def __init__(self, name, parameters, local_variables, commands, memory_offset):
+    def __init__(self, name, parameters, local_variables, commands, memory_offset, return_register):
         self.name = name
-        self.parameters = {param: memory_offset + i for i, param in enumerate(parameters)}
-        self.local_variables = {var: memory_offset + len(parameters) + i for i, var in enumerate(local_variables)}
+        self.parameters = parameters
+        self.local_variables = local_variables
         self.commands = commands
         self.called_procedures = set()
         self.memory_offset = memory_offset
-        self.memory_size = len(parameters) + len(local_variables)
-
-        for param in parameters:
-            if param.startswith("T") and len(param) > 1:
-                continue
-            elif not param.isidentifier():
-                raise Exception(f"Error: Invalid parameter name {param}")
-
-    def is_valid_variable(self, name):
-        return name in self.parameters or name in self.local_variables
+        self.return_register = return_register
 
     def __str__(self):
         params_str = ', '.join(f"{p}({offset})" for p, offset in self.parameters.items())
@@ -97,8 +90,6 @@ class SymbolTable(dict):
     
     # adding iterators
     def add_iterator(self, name):
-        if name in self.iterators:
-            raise ValueError(f"Error: Redeclaration of iterator '{name}'.")
         limit_address = self.memory_offset + 1
         self.iterators[name] = Iterator(self.memory_offset + 1, limit_address)
         self.memory_offset += 2
