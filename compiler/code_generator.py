@@ -144,13 +144,60 @@ class CodeGenerator:
                 raise Exception(f"Error: Assigning to invalid type")
             
     def generate_if_else(self, condition, true_commands, false_commands):
-        pass
+        simplified_condition = self.simplify_condition_if_possible(condition)
+        if simplified_condition == True:
+                self.generate_code_commands(true_commands)
+        elif simplified_condition == False:
+                self.generate_code_commands(false_commands)
+        else:
+            condition_start = len(self.code)
+            self.generate_condition_jumps(simplified_condition)
+            true_commands_start = len(self.code)
+            self.generate_code_commands(true_commands)
+            self.code.append("JUMP end")
+            false_commands_start = len(self.code)
+            self.generate_code_commands(false_commands)
+            end_of_if = len(self.code)
+            end = str(end_of_if - false_commands_start + 1)
+            self.code[false_commands_start - 1] = self.code[false_commands_start - 1].replace("end", end)
+            for i in range(condition_start, true_commands_start):
+                end = str(false_commands_start - i)
+                self.code[i] = self.code[i].replace("end", end)
+
 
     def generate_if(self, condition, true_commands):
-        pass
+        simplified_condition = self.simplify_condition_if_possible(condition)
+        if simplified_condition is True or simplified_condition is False:
+            if simplified_condition:
+                self.generate_code_commands(true_commands)
+        else:
+            condition_start = len(self.code)
+            self.generate_condition_jumps(simplified_condition)
+            command_start = len(self.code)
+            self.generate_code_commands(true_commands)
+            command_end = len(self.code)
+            for i in range(condition_start, command_start):
+                end_of_if = str(command_end - i)
+                self.code[i] = self.code[i].replace("end", end_of_if)
+
 
     def generate_while(self, condition, commands):
-        pass
+        simplified_condition = self.simplify_condition_if_possible(condition)
+        if simplified_condition == True:
+            raise Exception("Error: Infinite loop")
+        elif simplified_condition == False:
+            pass
+        else:
+            condition_start = len(self.code)
+            self.generate_condition_jumps(simplified_condition)
+            loop_start = len(self.code)
+            self.generate_code_commands(commands)
+            jump = condition_start - len(self.code)
+            self.code.append(f"JUMP {jump}")
+            loop_end = len(self.code)
+            for i in range(condition_start, loop_start):
+                end = str(loop_end - i)
+                self.code[i] = self.code[i].replace("end", end)
 
     def generate_repeat(self, commands, condition):
         pass
@@ -516,7 +563,7 @@ class CodeGenerator:
             raise Exception(f"Error: Invalid index type '{index}'")
         return address
 
-    def check_condition(self, condition):
+    def simplify_condition_if_possible(self, condition):
         condition_type = condition[0]
         left = condition[1]
         right = condition[2]
@@ -531,7 +578,7 @@ class CodeGenerator:
             elif condition_type == "greater":
                 return left_value > right_value
             elif condition_type == "less":
-                return left_value > right_value
+                return left_value < right_value
             elif condition_type == "greaterequal":
                 return left_value >= right_value
             elif condition_type == "lessequal":
@@ -544,5 +591,42 @@ class CodeGenerator:
             else:
                 return False
         else:
-            return None
+            return condition
+        
+    def generate_condition_jumps(self, condition):
+        # a _operator_ b <=> a - b _operator_ 0
+        operator = condition[0]
+        left = condition[1]
+        right = condition[2]
+
+        self.generate_code_expression(right)
+        self.code.append("STORE 10")
+        self.generate_code_expression(left)
+        self.code.append("SUB 10")
+
+        if operator == "equal":
+            self.code.append("JZERO 2")
+            self.code.append("JUMP end")
+        elif operator == "notequal":
+            self.code.append("JZERO 2")
+            self.code.append("JUMP 2")
+            self.code.append("JUMP end")
+        elif operator == "greater":
+            self.code.append("JPOS 2")
+            self.code.append("JUMP end")
+        elif operator == "less":
+            self.code.append("JNEG 2")
+            self.code.append("JUMP end")
+        elif operator == "greaterequal":
+            self.code.append("JPOS 3")
+            self.code.append("JZERO 2")
+            self.code.append("JUMP end")
+        elif operator == "lessequal":
+            self.code.append("JNEG 3")
+            self.code.append("JZERO 2")
+            self.code.append("JUMP end")
+        else:
+            raise Exception(f"Error: Invalid condition type '{operator}'")
+
+
         
