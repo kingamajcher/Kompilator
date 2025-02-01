@@ -187,11 +187,11 @@ class MyParser(Parser):
 
     @_('value PLUS value')
     def expression(self, p):
-        return "plus", p.value0, p.value1
+        return "add", p.value0, p.value1
 
     @_('value MINUS value')
     def expression(self, p):
-        return "minus", p.value0, p.value1
+        return "substract", p.value0, p.value1
 
     @_('value MULTIPLY value')
     def expression(self, p):
@@ -284,63 +284,3 @@ class MyParser(Parser):
             print(f"Syntax error at token {p.type} ({p.value}) on line {p.lineno}")
         else:
             print("Syntax error at EOF")
-
-
-program1 = '''PROGRAM IS
-    x, y, f[-1:1], c
-BEGIN
-    x := 10;
-    y := x + 2;
-    c := 0;
-    f[0] := 2;
-    f[1] := 3;
-    y := 2 + f[c];
-    IF x < y THEN
-        WRITE x;
-    ELSE
-        WRITE y;
-    ENDIF
-END'''
-
-program = '''PROGRAM IS
-    x, f[0:1]
-BEGIN
-    f[0] := 1;
-    f[1] := 5;
-    x := f[0] + f[1];
-    WRITE x;
-END'''
-
-def pretty_print_ast(ast, indent=0):
-    if isinstance(ast, (str, int)):
-        print("  " * indent + str(ast))
-    elif isinstance(ast, tuple):
-        node_type = ast[0]
-        print("  " * indent + f"{node_type}:")
-        for child in ast[1:]:
-            pretty_print_ast(child, indent + 1)
-    elif isinstance(ast, list):
-        for item in ast:
-            pretty_print_ast(item, indent)
-    else:
-        print("  " * indent + repr(ast))
-
-
-if __name__ == "__main__":
-    lexer = MyLexer()
-    parser = MyParser()
-
-    try:
-        tokens = lexer.tokenize(program)
-        code, ast = parser.parse(tokens)
-        pretty_print_ast(ast)
-
-        print("\nGenerated Assembler Code:")
-        print(code)
-
-        with open("output.mr", "w") as f:
-            f.write(code)
-        print("\nAssembler code saved to 'output.mr'.")
-
-    except Exception as e:
-        print(f"Error: {e}")
