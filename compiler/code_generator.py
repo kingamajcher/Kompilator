@@ -34,34 +34,35 @@ class CodeGenerator:
             self.generate_code_command(command)
 
     def generate_code_command(self, command):
-        if command[0] == "assign":
+        command_type = command[0]
+        if command_type == "assign":
             _, identifier, expression = command
             self.generate_code_assign(identifier, expression)
-        elif command[0] == "if_else":
+        elif command_type == "if_else":
             _, condition, true_commands, false_commands, constants = command
             self.generate_code_if_else(condition, true_commands, false_commands)
-        elif command[0] == "if":
+        elif command_type == "if":
             _, condition, true_commands, constants = command
             self.generate_code_if(condition, true_commands)
-        elif command[0] == 'while':
+        elif command_type == 'while':
             _, condition, commands, constants = command
             self.generate_code_while(condition, commands)
-        elif command[0] == "repeat":
+        elif command_type == "repeat":
             _, commands, condition, constants = command
             self.generate_code_repeat(commands, condition)
-        elif command[0] == "for_to":
+        elif command_type == "for_to":
             _, iterator, start_value, end_value, commands, constants = command
             self.generate_code_for(iterator, start_value, end_value, commands, False)
-        elif command[0] == "for_downto":
+        elif command_type == "for_downto":
             _, iterator, start_value, end_value, commands, constants = command
             self.generate_code_for(iterator, start_value, end_value, commands, True)
-        elif command[0] == "read":
+        elif command_type == "read":
             _, identifier = command
             self.generate_code_read(identifier)
-        elif command[0] == "write":
+        elif command_type == "write":
             _, value = command
             self.generate_code_write(value)
-        elif command[0] == "proc_call":
+        elif command_type == "proc_call":
             _, proc_name, args = command
             self.generate_code_proc_call(proc_name, args)
 
@@ -228,32 +229,96 @@ class CodeGenerator:
     def generate_code_for(self, iterator, start_value, end_value, commands, downto):
         if start_value[0] == "num" and end_value[0] == "num":
             if downto:
-                if start_value[1] > end_value[1]:
+                if start_value[1] < end_value[1]:
                     raise Exception("Error: Invalid range for loop")
             else:
-                if start_value[1] < end_value[1]:
+                if start_value[1] > end_value[1]:
                     raise Exception("Error: Invalid range for loop")
                 
         if iterator in self.symbol_table:
             raise Exception(f"Error: Redeclaration of iterator '{iterator}'")
         
+        """ zagnieżdzone pętle ????
         if self.iterators:
             address, limit_address = self.symbol_table.get_iterator(self.iterators[-1])
             self.code.append(f"STORE {address}")
         else:
-            pass
+            pass"""
+        
+        self.code.append("SET 1")
+        self.code.append("STORE 10")
+        
+        if downto:
+            operation = "SUB 10"
+        else:
+            operation = "ADD 10"
+
+        self.iterators.append(iterator)
+        start_address, end_address = self.symbol_table.add_iterator(iterator)
+
+        self.generate_code_expression(end_value)
+        if downto:
+            self.code.append("SUB 10")
+        else:
+            self.code.append("ADD 10")
+        self.code.append(f"STORE {end_address}")
+        self.generate_code_expression(start_value)
+        self.code.append(f"STORE {start_address}")
+
+        for_start = len(self.code)
+
+        self.code.append(f"SUB {end_address}")
+
+        # zakres petli for błędny więc się nie wykona
+        end_invalid_range = len(self.code)
+        if downto:
+            self.code.append("JNEG end_invalid_range")
+        else:
+            self.code.append("JPOS end_invalid_range")
+
+        commands_start = len(self.code)
+        self.code.append("JZERO end_of_for")
+        self.generate_code_commands(commands)
+        self.code.append(f"LOAD {start_address}")
+        self.code.append(f"{operation}")
+        self.code.append(f"STORE {start_address}")
+
+        for_end = len(self.code)
+        self.code[commands_start] = f"JZERO {for_end - for_start - 1}"
+        jump = str(-(for_end - for_start + 1))
+        self.code.append(f"JUMP {jump}")
+        end = len(self.code)
+        self.code[end_invalid_range] = self.code[end_invalid_range].replace("end_invalid_range", str(end - end_invalid_range))
 
         
         
     
     def generate_code_write(self, value):
-        if value[0] == "id":
+        value_type = value[0]
+        if value_type == "id":
             if isinstance(value[1], tuple):
-                pass
+                if value[1][0] == "undeclared":
+                    if value[1][1] in self.symbol_table.iterators:
+                        iterator_memory_offset, _ = self.symbol_table.get_iterator(value[1][1])
+                        self.code.append(f"PUT {iterator_memory_offset}")
+                    else:
+                        # obsługa procedur
+                        raise Exception(f"Error: Undeclared variable '{value[1][1]}'")
+                elif value[1][0] == "array":
+                    name = value[1][1]
+                    index = value[1][2]
+                    address = self.handle_array_at_index(name, index)
+                    if address == 0:
+                        self.code.append("LOADI 11")
+                        self.code.append("PUT 0")
+                    else:
+                        self.code.append(f"PUT {address}")
+                else:
+                    raise Exception(f"Error: Invalid value type '{value[1][0]}' for WRITE")
             else:
                 variable = self.symbol_table.get_address(value[1])
                 self.code.append(f"PUT {variable}")
-        elif value[0] == "num":
+        elif value_type == "num":
             self.code.append(f"SET {value[1]}")
             self.code.append(f"PUT 0")
         else:
@@ -261,9 +326,25 @@ class CodeGenerator:
 
     def generate_code_read(self, identifier):
         if isinstance(identifier, tuple):
-            #tablice i undeclared
-            #to sie kiedys dorobi xd
-            pass
+            if identifier[0] == "undeclared":
+                if identifier[1] in self.symbol_table.iterators:
+                    iterator_address, _ = self.symbol_table.get_iterator(identifier[1])
+                    self.code.append(f"GET {iterator_address}")
+                else:
+                    # obsługa procedur
+                    raise Exception(f"Error: Undeclared variable '{identifier[1]}'")
+            else:
+                if identifier[0] == "array":
+                    name = identifier[1]
+                    index = identifier[2]
+                    address = self.handle_array_at_index(name, index)
+                    if address == 0:
+                        self.code.append("GET 11")
+                        self.code.append("STOREI 11")
+                    else:
+                        self.code.append(f"GET {address}")
+                        self.code.append(f"STOREI 1")
+
         else:
             if identifier in self.symbol_table:
                 self.symbol_table[identifier].initialized = True
