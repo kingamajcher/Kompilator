@@ -90,7 +90,7 @@ class SymbolTable(dict):
     
     # adding iterators
     def add_iterator(self, name):
-        limit_address = self.memory_offset + 1
+        limit_address = self.memory_offset
         self.iterators[name] = Iterator(self.memory_offset + 1, limit_address)
         self.memory_offset += 2
         return self.memory_offset - 1, limit_address
