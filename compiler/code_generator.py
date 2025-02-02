@@ -6,24 +6,57 @@ class CodeGenerator:
         self.code = []
         self.iterators = []
         self.current_procedure = None
+        self.defined_procedures = set()
 
     def generate(self, ast):
         if ast[0] == 'program':
             _, procedures, main = ast
+            procedures_start = len(self.code)
+            self.code.append("JUMP main")
             self.generate_code_procedures(procedures)
+            main_start = len(self.code)
+            self.code[procedures_start] = f"JUMP {main_start}"
             self.generate_code_main(main)
             self.code.append("HALT")
         return "\n".join(self.code)
     
     def generate_code_procedures(self, procedures):
-        for proc in procedures:
-            if proc[0] == "procedure":
-                self.generate_code_procedure(proc)
+        for procedure in procedures:
+            if procedure[0] == "procedure":
+                self.generate_code_procedure(procedure)
 
     def generate_code_procedure(self, proc):
         _, proc_head, declarations, commands = proc
-        proc_name, params = proc_head
-        pass
+        name, parameters = proc_head
+
+        if name in self.defined_procedures:
+            raise Exception(f"Error: redefinition of procedure '{name}'")
+        self.defined_procedures.add(name)
+
+        for parameter in parameters:
+            if isinstance(parameter, tuple):
+                if parameter[0] != "T":
+                    raise Exception(f"Error: invalid parameter in procedure '{name}'")
+                
+        self.symbol_table.add_procedure(name, parameters, declarations, commands)
+
+        self.symbol_table.current_procedure = name
+        procedure_start = len(self.code)
+
+        if self.symbol_table.procedures[name].memory_offset is None:
+            self.symbol_table.procedures[name].memory_offset = procedure_start
+
+        self.generate_code_commands(commands)
+        procedure = self.symbol_table.procedures[name]
+
+        # call count sprawdic
+        return_memory_index = procedure.return_registers[procedure.call_count]
+
+        self.code.append(f"RTRN {return_memory_index}")
+
+        self.symbol_table.current_procedure = None
+
+        
 
     def generate_code_main(self, main):
         _, declarations, commands = main

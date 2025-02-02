@@ -126,7 +126,7 @@ class SymbolTable(dict):
             return_memory = []
             for i in range(10):
                 return_memory.append(Variable(self.memory_offset + i, is_local=True))
-            self.memory_counter += 10
+            self.memory_offset += 10
 
             self.procedures[name] = Procedure(name, parameters_memory, local_variables_memory, commands, None, return_memory)
 
