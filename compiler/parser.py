@@ -23,9 +23,10 @@ class MyParser(Parser):
     @_('procedures main')
     def program_all(self, p):
         ast = ("program", p.procedures, p.main)
-        print(ast)
+        # print(ast)
         code = self.generator.generate(ast)
-        return code, ast
+        # return code, ast
+        return code
 
 
     # Procedures
