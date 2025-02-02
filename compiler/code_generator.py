@@ -70,9 +70,11 @@ class CodeGenerator:
     def generate_code_expression(self, expression):
         expression_type = expression[0]
         if expression_type == "num":
-            self.code.append(f"SET {expression[1]}")
+            value = expression[1]
+            self.code.append(f"SET {value}")
         elif expression_type == "id":
-            self.handle_id(expression[1])
+            identifier = expression[1]
+            self.handle_identifier(identifier)
         elif expression_type == "add":
             self.add(expression)
         elif expression_type == "substract":
@@ -86,7 +88,7 @@ class CodeGenerator:
         else:
             raise Exception(f"Error: Invalid expression type '{expression_type}'")
 
-    def handle_id(self, expression):
+    def handle_identifier(self, expression):
         # handling of undeclared variables
         if expression[0] == "undeclared":
             if expression[1] in self.symbol_table.iterators:
@@ -159,10 +161,11 @@ class CodeGenerator:
             self.generate_code_commands(false_commands)
             end_of_if = len(self.code)
             end = str(end_of_if - false_commands_start + 1)
-            self.code[false_commands_start - 1] = self.code[false_commands_start - 1].replace("end", end)
+            self.code[false_commands_start - 1] = f"JUMP {end}"
             for i in range(condition_start, true_commands_start):
                 end = str(false_commands_start - i)
-                self.code[i] = self.code[i].replace("end", end)
+                if self.code[i] == "JUMP end":
+                    self.code[i] = f"JUMP {end}"
 
 
     def generate_code_if(self, condition, true_commands):
@@ -178,8 +181,9 @@ class CodeGenerator:
             self.generate_code_commands(true_commands)
             command_end = len(self.code)
             for i in range(condition_start, command_start):
-                end_of_if = str(command_end - i)
-                self.code[i] = self.code[i].replace("end", end_of_if)
+                end = str(command_end - i)
+                if self.code[i] == "JUMP end":
+                    self.code[i] = f"JUMP {end}"
 
 
     def generate_code_while(self, condition, commands):
@@ -198,7 +202,8 @@ class CodeGenerator:
             loop_end = len(self.code)
             for i in range(condition_start, loop_start):
                 end = str(loop_end - i)
-                self.code[i] = self.code[i].replace("end", end)
+                if self.code[i] == "JUMP end":
+                    self.code[i] = f"JUMP {end}"
 
     def generate_code_repeat(self, commands, condition):
         simplified_condition = self.simplify_condition_if_possible(condition)
@@ -213,7 +218,8 @@ class CodeGenerator:
             self.generate_condition_jumps(simplified_condition)
             loop_end = len(self.code)
             for i in range(condition_start, loop_end):
-                self.code[i] = self.code[i].replace("end", str(2))
+                if self.code[i] == "JUMP end":
+                    self.code[i] = f"JUMP 2"
             self.code.append(f"JUMP 2")
             jump = str(-(loop_end - loop_start + 1))
             self.code.append(f"JUMP {jump}")
@@ -231,7 +237,13 @@ class CodeGenerator:
         if iterator in self.symbol_table:
             raise Exception(f"Error: Redeclaration of iterator '{iterator}'")
         
+        if self.iterators:
+            address, limit_address = self.symbol_table.get_iterator(self.iterators[-1])
+            self.code.append(f"STORE {address}")
+        else:
+            pass
 
+        
         
     
     def generate_code_write(self, value):
