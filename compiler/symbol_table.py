@@ -12,7 +12,7 @@ class Array:
     def get_memory_index(self, index):
         if index < self.first_index or index > self.last_index:
             raise IndexError(f"Error: Array index out of bounds.")
-        return self.memory_offset + (index - self.first_index) + 1
+        return self.memory_offset + (index - self.first_index)
     
 
 class Variable:
@@ -193,7 +193,7 @@ class SymbolTable(dict):
             else:
                 raise Exception(f"Error: Undeclared variable '{name}' in procedure {procedure}.")
     
-    
+
     # getting procedure
     def get_procedure(self, name):
         if name in self.procedures:

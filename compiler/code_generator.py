@@ -99,8 +99,11 @@ class CodeGenerator:
         # handling of undeclared variables
         if expression[0] == "undeclared":
             if expression[1] in self.symbol_table.iterators:
-                iterator_address = self.symbol_table.get_iterator(expression[1])
+                iterator_address, _ = self.symbol_table.get_iterator(expression[1])
                 self.code.append(f"LOAD {iterator_address}")
+            elif isinstance(self.symbol_table.get_address_in_procedure(expression[1]), Variable):
+                address = self.symbol_table.get_address_in_procedure(expression[1])
+                self.code.append(f"LOADI {address}")
             else:
                 raise Exception(f"Error: undeclared variable '{expression[1]}'")
         # handling of array indices
@@ -108,12 +111,9 @@ class CodeGenerator:
             name = expression[1]
             index = expression[2]
 
-            address = self.handle_array_at_index(name, index)
+            self.handle_array_at_index(name, index)
 
-            if address == 0:
-                self.code.append(f"LOADI 1")
-            else:
-                self.code.append(f"LOAD {address}")
+            self.code.append("LOADI 12")
 
 
         # handling of variables
@@ -133,16 +133,20 @@ class CodeGenerator:
                 if variable[1] in self.symbol_table.iterators:
                     raise Exception(f"Error: Cannot assign value to iterator '{variable[1]}'")
                 else:
-                    raise Exception(f"Error: Undeclared variable '{variable[1]}'")
+                    address = self.symbol_table.get_address_in_procedure(variable[1])
+                    self.generate_code_expression(expression)
+                    if isinstance(address, Variable):
+                        self.code.append(f"STOREI {address}")
+                    else:
+                        self.code.append(f"STORE {address}")
             elif variable[0] == "array":
                 name = variable[1]
                 index = variable[2]
-                address = self.handle_array_at_index(name, index)
+                self.handle_array_at_index(name, index)
+                self.code.append("LOAD 12")
+                self.code.append("STORE 13")
                 self.generate_code_expression(expression)
-                if address != 0:
-                    self.code.append(f"STORE {address}")
-                else:
-                    self.code.append(f'STOREI 1')
+                self.code.append("STOREI 13")
         else:
             if isinstance(variable, str):
                 self.symbol_table[variable].initialized = True
@@ -303,17 +307,18 @@ class CodeGenerator:
                         iterator_memory_offset, _ = self.symbol_table.get_iterator(value[1][1])
                         self.code.append(f"PUT {iterator_memory_offset}")
                     else:
-                        # obsługa procedur
-                        raise Exception(f"Error: Undeclared variable '{value[1][1]}'")
+                        address = self.symbol_table.get_address_in_procedure(value[1][1])
+                        if isinstance(address, Variable):
+                            self.code.append(f"LOADI {address}")
+                            self.code.append("PUT 0")
+                        else:
+                            raise Exception(f"Error: Undeclared variable '{value[1][1]}'")
                 elif value[1][0] == "array":
                     name = value[1][1]
                     index = value[1][2]
-                    address = self.handle_array_at_index(name, index)
-                    if address == 0:
-                        self.code.append("LOADI 11")
-                        self.code.append("PUT 0")
-                    else:
-                        self.code.append(f"PUT {address}")
+                    self.handle_array_at_index(name, index)
+                    self.code.append("LOADI 12")
+                    self.code.append("PUT 0")
                 else:
                     raise Exception(f"Error: Invalid value type '{value[1][0]}' for WRITE")
             else:
@@ -332,26 +337,25 @@ class CodeGenerator:
                     iterator_address, _ = self.symbol_table.get_iterator(identifier[1])
                     self.code.append(f"GET {iterator_address}")
                 else:
-                    # obsługa procedur
-                    raise Exception(f"Error: Undeclared variable '{identifier[1]}'")
-            else:
-                if identifier[0] == "array":
-                    name = identifier[1]
-                    index = identifier[2]
-                    address = self.handle_array_at_index(name, index)
-                    if address == 0:
-                        self.code.append("GET 11")
-                        self.code.append("STOREI 11")
+                    address = self.symbol_table.get_address_in_procedure(identifier[1][1])
+                    if isinstance(address, Variable):
+                        self.code.append("GET 0")
+                        self.code.append(f"STOREI {address}")
                     else:
-                        self.code.append(f"GET {address}")
-                        self.code.append(f"STOREI 1")
-
+                        raise Exception(f"Error: Undeclared variable '{identifier[1][1]}'")
+            elif identifier[0] == "array":
+                name = identifier[1]
+                index = identifier[2]
+                self.handle_array_at_index(name, index)
+                self.code.append("GET 0")
+                self.code.append("STOREI 12")
         else:
             if identifier in self.symbol_table:
                 self.symbol_table[identifier].initialized = True
                 address = self.symbol_table.get_address(identifier)
-            # może trzeba pomyślec nad obsługa iteratorów bo ich chyba nie można read
-            self.code.append(f"GET {address}")
+                self.code.append(f"GET {address}")
+            elif identifier in self.symbol_table.iterators:
+                raise Exception(f"Error: Cannot read to iterator '{identifier}'")
 
     def generate_code_proc_call(self, proc_name, args):
         pass
@@ -660,33 +664,47 @@ class CodeGenerator:
         address = None
         first_index = self.symbol_table[name].first_index
         memory_offset_of_first_index = self.symbol_table.get_address([name, first_index])
-        array_offset = memory_offset_of_first_index - first_index # place where zero would be in array
+        array_offset = memory_offset_of_first_index - first_index # miejsce, gdzie w tablicy było by zero
 
-        if isinstance(index, int):
+        if isinstance(index, int): # odwołanie do konkretnej liczby
             address = self.symbol_table.get_address([name, index])
-        elif isinstance(index, tuple) and index[0] == "id":
-            if isinstance(index[1], tuple) and index[1][0] == "undeclared":
-                if index[1][1] in self.symbol_table.iterators:
-                    iterator_address = self.symbol_table.get_iterator(index[1][1])
+            self.code.append(f"SET {address}")
+            self.code.append(f"STORE 12")
+        elif isinstance(index, tuple) and index[0] == "id": # odwołanie do identifiera
+            if isinstance(index[1], tuple) and index[1][0] == "undeclared": # jeśli undeclared to może być iterator lub w procedurze
+                name = index[1][1]
+                if name in self.symbol_table.iterators:
+                    iterator_address, _ = self.symbol_table.get_iterator(name)
                     self.code.append(f"SET {array_offset}")
                     self.code.append(f"ADD {iterator_address}")
-                    self.code.append(f"STORE 1")
+                    self.code.append(f"STORE 12")
+                elif name in self.symbol_table.current_procedure:
+                    if name in self.symbol_table.procedures[self.symbol_table.current_procedure].local_variables:
+                        variable_address = self.symbol_table.procedures[self.symbol_table.current_procedure].local_variables[name]
+                        self.code.append(f"SET {array_offset}")
+                        self.code.append(f"ADD {variable_address}")
+                        self.code.append(f"STORE 12")
+                    else:
+                        raise Exception(f"Undeclared index variable '{name}'.")
+                elif name in self.symbol_table:
+                    variable_address = self.symbol_table.get_address(name)
+                    self.code.append(f"SET {array_offset}")
+                    self.code.append(f"ADD {variable_address}")
+                    self.code.append(f"STORE 12")
                 else:
-                    raise Exception(f"Undeclared index variable '{index[1][1]}'.")
-            elif isinstance(index[1], str):
+                    raise Exception(f"Undeclared index variable '{name}'.")
+            elif isinstance(index[1], str): # odwołanie do zmiennej
                 name = index[1]
                 variable_address = self.symbol_table.get_address(name)
                 if not self.symbol_table[name].initialized:
                     raise Exception(f"Error: Uninitialized variable '{name}'")
                 self.code.append(f"SET {array_offset}")
                 self.code.append(f"ADD {variable_address}")
-                self.code.append("STORE 1")
-                # moze dodac sprawdzanie czy jest w zakresie
+                self.code.append("STORE 12")
             else:
                 raise Exception(f"Error: Invalid index type '{index}'")
         else:
             raise Exception(f"Error: Invalid index type '{index}'")
-        return address
 
     def simplify_condition_if_possible(self, condition):
         condition_type = condition[0]
