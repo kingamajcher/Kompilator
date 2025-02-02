@@ -45,30 +45,37 @@ class Procedure:
         self.commands = commands
         self.memory_offset = memory_offset
         self.return_register = return_register
+        self.call_count = 0
 
     def __str__(self):
-        params_str = ', '.join(f"{p}({offset})" for p, offset in self.parameters.items())
-        locals_str = ', '.join(f"{v}({offset})" for v, offset in self.local_variables.items())
-        commands_str = '\n    '.join(self.commands)
         return (f"Procedure {self.name}:\n"
-                f"  Parameters: {params_str}\n"
-                f"  Local Variables: {locals_str}\n"
-                f"  Commands:\n    {commands_str}")
+                f"  Parameters: {self.parameters}\n"
+                f"  Local Variables: {self.local_variables}\n"
+                f"  Commands: {self.commands}\n"
+                f"  Memory Offset: {self.memory_offset}\n"
+                f"  Return Register: {self.return_register}\n")
     
 
 class SymbolTable(dict):
     def __init__(self):
         super().__init__()
         self.memory_offset = 20
-        self.consts = {}
+        #self.consts = {}
         self.iterators = {}
         self.procedures = {}
+        self.current_procedure = None
 
     # adding variables
     def add_variable(self, name):
-        if name in self:
-            raise Exception(f"Error: Redeclaration of variable '{name}'.")
-        self[name] = Variable(self.memory_offset)
+        if self.current_procedure != None:
+            procedure = self.procedures[self.current_procedure]
+            if name in procedure.local_variables:
+                raise Exception(f"Error: Redeclaration of variable '{name}' in procedure {procedure}.")
+            procedure.local_variables[name] = Variable(self.memory_offset, is_local=True)
+        else:     
+            if name in self:
+                raise Exception(f"Error: Redeclaration of variable '{name}'.")
+            self[name] = Variable(self.memory_offset)
         self.memory_offset += 1
 
     # adding arrays
@@ -81,11 +88,11 @@ class SymbolTable(dict):
         self.memory_offset += (last_index - first_index + 1)
 
     # adding constants
-    def add_const(self, value):
+    """def add_const(self, value):
         if value not in self.consts:
             self.consts[value] = self.memory_offset
             self.memory_offset += 1
-        return self.consts[value]
+        return self.consts[value]"""
     
     # adding iterators
     def add_iterator(self, name):
@@ -96,55 +103,50 @@ class SymbolTable(dict):
 
     # adding procedure
     def add_procedure(self, name, parameters, local_variables, commands):
-        if name in self.procedures:
+        if name in self.procedures or name in self:
             raise Exception(f"Error: Redeclaration of procedure {name}")
+        else:
+            self.current_procedure = name
 
-        base_memory_offset = self.memory_offset
-        memory_size = len(parameters) + len(local_variables)
-        self.memory_offset += memory_size
+            parameters_memory = {}
+            for parameter in parameters:
+                if isinstance(parameter, tuple) and parameter[0] == "T":
+                    array_name = parameter[1]
+                    parameters_memory[array_name] = Array(self.memory_offset, None, None)
+                    self.memory_offset += 1
+                else:
+                    parameters_memory[parameter] = Variable(self.memory_offset, is_parameter=True)
+                    self.memory_offset += 1
 
-        procedure = Procedure(name, parameters, local_variables, commands, base_memory_offset)
-        self.procedures[name] = procedure
-
-        self.is_procedure_valid(name)
-
-
-    def is_procedure_valid(self, name):
-        procedure = self.get_procedure(name)
-
-        for called_proc in procedure.called_procedures:
-            if called_proc not in self.procedures:
-                raise Exception(f"Error: Procedure {called_proc} called in {name} is not defined")
-            if list(self.procedures.keys()).index(called_proc) > list(self.procedures.keys()).index(name):
-                raise Exception(f"Error: Procedure {called_proc} must be defined before it is called in {name}")
+            local_variables_memory = {}
+            for local_variable in local_variables:
+                local_variables_memory[local_variable] = Variable(self.memory_offset, is_local=True)
+                self.memory_offset += 1
             
-    def is_index_valid(self, array_name, index):
-        # Sprawdzenie, czy podana tablica istnieje
-        if array_name not in self or not isinstance(self[array_name], Array):
-            raise Exception(f"Error: '{array_name}' is not a declared array.")
+            return_memory = []
+            for i in range(10):
+                return_memory.append(Variable(self.memory_offset + i, is_local=True))
+            self.memory_counter += 10
 
-        array = self[array_name]
+            self.procedures[name] = Procedure(name, parameters_memory, local_variables_memory, commands, None, return_memory)
 
-        # Jeśli indeks jest liczbą całkowitą, sprawdź, czy mieści się w zakresie
-        if isinstance(index, int):
-            return array.first_index <= index <= array.last_index
+            self.is_procedure_valid(name)
+            self.current_procedure = None
 
-        # Jeśli indeks jest zmienną, pobierz jej wartość
-        if isinstance(index, str):
-            # Użycie istniejącej metody `get_variable` do walidacji zmiennej
-            variable = self.get_variable(index)
-            if not isinstance(variable, Variable):
-                raise Exception(f"Error: '{index}' is not a valid variable.")
+    # checking if procedure is valid
+    def is_procedure_valid(self, name):
+        procedure  = self.get_procedure(name)
+        commands = procedure.commands
 
-            # Zakładamy, że w runtime zmienna będzie miała przypisaną wartość.
-            # Tymczasowo symulujemy jej wartość jako `0` dla demonstracji.
-            resolved_value = variable.memory_offset  # Symulacja - zastąp właściwą wartością runtime
+        for command in commands:
+            if command[0] == "proc_call":
+                called_procedure = command[1]
+                if called_procedure not in self.procedures:
+                    raise Exception(f"Error: Procedure '{called_procedure}' is not declared.")
+                procedure_keys = list(self.procedures)
+                if procedure_keys.index(called_procedure) > procedure_keys.index(name):
+                    raise Exception(f"Error: Procedure {called_procedure} is called before it is defined.")
 
-            # Sprawdź, czy zdekodowana wartość mieści się w zakresie tablicy
-            return array.first_index <= resolved_value <= array.last_index
-
-        # Jeśli typ indeksu jest nieobsługiwany, zgłoś błąd
-        raise TypeError(f"Error: Unsupported index type '{type(index).__name__}'.")
 
     # getting iterator
     def get_iterator(self, name):
@@ -179,71 +181,22 @@ class SymbolTable(dict):
             return self.get_variable(name).memory_offset
         else:
             return self.get_array_at(name[0], name[1])
-    
-
         
+    # getting address in procedure
+    def get_address_in_procedure(self, name):
+        if self.current_procedure != None:
+            procedure = self.procedures[self.current_procedure]
+            if name in procedure.parameters:
+                return procedure.parameters[name]
+            elif name in procedure.local_variables:
+                return procedure.local_variables[name]
+            else:
+                raise Exception(f"Error: Undeclared variable '{name}' in procedure {procedure}.")
+    
+    
     # getting procedure
     def get_procedure(self, name):
         if name in self.procedures:
             return self.procedures[name]
         else:
             raise Exception(f"Error: Undeclared procedure'{name}'.")
-        
-
-
-if __name__ == "__main__":
-    symbol_table = SymbolTable()
-
-    print("=== Dodawanie zmiennych ===")
-    symbol_table.add_variable("x")
-    symbol_table.add_variable("y")
-    print("Tablica symboli po dodaniu zmiennych:")
-    print(symbol_table)
-
-    print("\n=== Dodawanie tablic ===")
-    symbol_table.add_array("arr", -10, 10)
-    symbol_table.add_array("matrix", 0, 4)
-    print("Tablica symboli po dodaniu tablic:")
-    print(symbol_table)
-
-    print("\n=== Pobieranie elementów tablicy ===")
-    print(f"Adres arr[-5]: {symbol_table.get_array_at('arr', -5)}")
-    print(f"Adres matrix[2]: {symbol_table.get_array_at('matrix', 2)}")
-
-    print("\n=== Dodawanie stałych ===")
-    addr1 = symbol_table.add_const(42)
-    addr2 = symbol_table.add_const(100)
-    addr3 = symbol_table.add_const(42)
-    print(f"Adres stałej 42: {addr1}")
-    print(f"Adres stałej 100: {addr2}")
-    print(f"Adres stałej 42 (ponownie): {addr3}")
-
-    print("\n=== Dodawanie iteratorów ===")
-    symbol_table.add_iterator("i")
-    symbol_table.add_iterator("j")
-    print("Tablica symboli po dodaniu iteratorów:")
-    print("Iteratory:", symbol_table.iterators)
-
-    print("\n=== Dodawanie procedury ===")
-    symbol_table.add_procedure('proc1', ['a', 'Tb'], ['x'], ['WRITE a;', 'WRITE x;'])
-    print(f"Procedura 'proc1': {symbol_table.get_procedure('proc1')}")
-
-    print("\n=== Pobieranie adresu zmiennej i tablicy ===")
-    print(f"Adres zmiennej 'x': {symbol_table.get_address('x')}")
-    print(f"Adres tablicy 'arr[-5]': {symbol_table.get_address(('arr', -5))}")
-
-    print("\n=== Obsługa błędów ===")
-    try:
-        symbol_table.add_variable("x")
-    except Exception as e:
-        print(f"{e}")
-
-    try:
-        symbol_table.get_array_at("matrix", 10)
-    except Exception as e:
-        print(f"{e}")
-
-    try:
-        symbol_table.get_variable("unknown")
-    except Exception as e:
-        print(f"{e}")

@@ -39,22 +39,28 @@ class CodeGenerator:
             _, identifier, expression = command
             self.generate_code_assign(identifier, expression)
         elif command_type == "if_else":
-            _, condition, true_commands, false_commands, constants = command
+            # _, condition, true_commands, false_commands, constants = command
+            _, condition, true_commands, false_commands = command
             self.generate_code_if_else(condition, true_commands, false_commands)
         elif command_type == "if":
-            _, condition, true_commands, constants = command
+            # _, condition, true_commands, constants = command
+            _, condition, true_commands = command
             self.generate_code_if(condition, true_commands)
         elif command_type == 'while':
-            _, condition, commands, constants = command
+            #_, condition, commands, constants = command
+            _, condition, commands = command
             self.generate_code_while(condition, commands)
         elif command_type == "repeat":
-            _, commands, condition, constants = command
+            #_, commands, condition, constants = command
+            _, commands, condition = command
             self.generate_code_repeat(commands, condition)
         elif command_type == "for_to":
-            _, iterator, start_value, end_value, commands, constants = command
+            # _, iterator, start_value, end_value, commands, constants = command
+            _, iterator, start_value, end_value, commands = command
             self.generate_code_for(iterator, start_value, end_value, commands, False)
         elif command_type == "for_downto":
-            _, iterator, start_value, end_value, commands, constants = command
+            # _, iterator, start_value, end_value, commands, constants = command
+            _, iterator, start_value, end_value, commands = command
             self.generate_code_for(iterator, start_value, end_value, commands, True)
         elif command_type == "read":
             _, identifier = command
@@ -647,11 +653,14 @@ class CodeGenerator:
         self.code.append("LOAD 7")
 
     def handle_array_at_index(self, name, index):
-        address = 0
-        # w 1 przechowujemy adres komórki tablicy jesli nie odwołujemy sie do niej przez liczbe
+        if name not in self.symbol_table:
+            raise Exception(f"Error: Array '{name}' not declared")
+        if not isinstance(self.symbol_table[name], Array):
+            raise Exception(f"Error: '{name}' is not an array")
+        address = None
         first_index = self.symbol_table[name].first_index
         memory_offset_of_first_index = self.symbol_table.get_address([name, first_index])
-        array_offset = memory_offset_of_first_index - first_index
+        array_offset = memory_offset_of_first_index - first_index # place where zero would be in array
 
         if isinstance(index, int):
             address = self.symbol_table.get_address([name, index])
@@ -662,7 +671,6 @@ class CodeGenerator:
                     self.code.append(f"SET {array_offset}")
                     self.code.append(f"ADD {iterator_address}")
                     self.code.append(f"STORE 1")
-                    #sprawdzanie czy jest w zakresie
                 else:
                     raise Exception(f"Undeclared index variable '{index[1][1]}'.")
             elif isinstance(index[1], str):

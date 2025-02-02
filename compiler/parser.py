@@ -17,7 +17,7 @@ class MyParser(Parser):
         super().__init__()
         self.generator = CodeGenerator(self.symbol_table)
 
-    literal_constants = set()
+    #literal_constants = set()
 
     # Program
     @_('procedures main')
@@ -70,38 +70,44 @@ class MyParser(Parser):
 
     @_('IF condition THEN commands ELSE commands ENDIF')
     def command(self, p):
-        temp =  "if_else", p.condition, p.commands0, p.commands1, self.literal_constants.copy()
-        self.literal_constants.clear()
+        # temp =  "if_else", p.condition, p.commands0, p.commands1, self.literal_constants.copy()
+        # self.literal_constants.clear()
+        temp =  "if_else", p.condition, p.commands0, p.commands1
         return temp
 
     @_('IF condition THEN commands ENDIF')
     def command(self, p):
-        temp = "if", p.condition, p.commands, self.literal_constants.copy()
-        self.literal_constants.clear()
+        # temp = "if", p.condition, p.commands, self.literal_constants.copy()
+        # self.literal_constants.clear()
+        temp = "if", p.condition, p.commands
         return temp
 
     @_('WHILE condition DO commands ENDWHILE')
     def command(self, p):
-        temp = "while", p.condition, p.commands, self.literal_constants.copy()
-        self.literal_constants.clear()
+        # temp = "while", p.condition, p.commands, self.literal_constants.copy()
+        # self.literal_constants.clear()
+        temp = "while", p.condition, p.commands
         return temp
 
     @_('REPEAT commands UNTIL condition SEMICOLON')
     def command(self, p):
-        temp = "repeat", p.commands, p.condition, self.literal_constants.copy()
-        self.literal_constants.clear()
+        # temp = "repeat", p.commands, p.condition, self.literal_constants.copy()
+        # self.literal_constants.clear()
+        temp = "repeat", p.commands, p.condition
         return temp
 
     @_('FOR PIDENTIFIER FROM value TO value DO commands ENDFOR')
     def command(self, p):
-        temp = "for_to", p.PIDENTIFIER, p.value0, p.value1, p.commands, self.literal_constants.copy()
-        self.literal_constants.clear()
+        # temp = "for_to", p.PIDENTIFIER, p.value0, p.value1, p.commands, self.literal_constants.copy()
+        # self.literal_constants.clear()
+        temp = "for_to", p.PIDENTIFIER, p.value0, p.value1, p.commands
         return temp
 
     @_('FOR PIDENTIFIER FROM value DOWNTO value DO commands ENDFOR')
     def command(self, p):
-        temp = "for_downto", p.PIDENTIFIER, p.value0, p.value1, p.commands, self.literal_constants.copy()
-        self.literal_constants.clear()
+        # temp = "for_downto", p.PIDENTIFIER, p.value0, p.value1, p.commands, self.literal_constants.copy()
+        # self.literal_constants.clear()
+        temp = "for_downto", p.PIDENTIFIER, p.value0, p.value1, p.commands
         return temp
 
     @_('READ identifier SEMICOLON')
@@ -110,8 +116,8 @@ class MyParser(Parser):
 
     @_('WRITE value SEMICOLON')
     def command(self, p):
-        if p[1][0] == "num":
-            self.symbols.add_const(p[1][1])
+        """if p[1][0] == "num":
+            self.symbols.add_const(p[1][1])"""
         return 'write', p.value
 
     @_('proc_call SEMICOLON')
