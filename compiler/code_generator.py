@@ -257,10 +257,7 @@ class CodeGenerator:
         start_address, end_address = self.symbol_table.add_iterator(iterator)
 
         self.generate_code_expression(end_value)
-        if downto:
-            self.code.append("SUB 10")
-        else:
-            self.code.append("ADD 10")
+        self.code.append(operation)
         self.code.append(f"STORE {end_address}")
         self.generate_code_expression(start_value)
         self.code.append(f"STORE {start_address}")
@@ -289,8 +286,6 @@ class CodeGenerator:
         self.code.append(f"JUMP {jump}")
         end = len(self.code)
         self.code[end_invalid_range] = self.code[end_invalid_range].replace("end_invalid_range", str(end - end_invalid_range))
-
-        
         
     
     def generate_code_write(self, value):

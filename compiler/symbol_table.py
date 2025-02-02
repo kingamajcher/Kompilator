@@ -2,7 +2,7 @@ class Array:
     def __init__(self, memory_offset, first_index, last_index):
         self.memory_offset = memory_offset
         if first_index > last_index:
-            raise ValueError(f"Error: First index of array is greater than last index.")
+            raise Exception (f"Error: First index of array is greater than last index.")
         self.first_index = first_index
         self.last_index = last_index
 
@@ -43,7 +43,6 @@ class Procedure:
         self.parameters = parameters
         self.local_variables = local_variables
         self.commands = commands
-        self.called_procedures = set()
         self.memory_offset = memory_offset
         self.return_register = return_register
 
@@ -68,16 +67,16 @@ class SymbolTable(dict):
     # adding variables
     def add_variable(self, name):
         if name in self:
-            raise ValueError(f"Error: Redeclaration of variable '{name}'.")
+            raise Exception(f"Error: Redeclaration of variable '{name}'.")
         self[name] = Variable(self.memory_offset)
         self.memory_offset += 1
 
     # adding arrays
     def add_array(self, name, first_index, last_index):
         if name in self:
-            raise ValueError(f"Error: Redeclaration of array '{name}'.")
+            raise Exception(f"Error: Redeclaration of array '{name}'.")
         elif first_index > last_index:
-            raise ValueError(f"Invalid range for array '{name}'.")
+            raise Exception(f"Invalid range for array '{name}'.")
         self[name] = Array(self.memory_offset, first_index, last_index)
         self.memory_offset += (last_index - first_index + 1)
 
@@ -122,7 +121,7 @@ class SymbolTable(dict):
     def is_index_valid(self, array_name, index):
         # Sprawdzenie, czy podana tablica istnieje
         if array_name not in self or not isinstance(self[array_name], Array):
-            raise ValueError(f"Error: '{array_name}' is not a declared array.")
+            raise Exception(f"Error: '{array_name}' is not a declared array.")
 
         array = self[array_name]
 
@@ -135,7 +134,7 @@ class SymbolTable(dict):
             # Użycie istniejącej metody `get_variable` do walidacji zmiennej
             variable = self.get_variable(index)
             if not isinstance(variable, Variable):
-                raise ValueError(f"Error: '{index}' is not a valid variable.")
+                raise Exception(f"Error: '{index}' is not a valid variable.")
 
             # Zakładamy, że w runtime zmienna będzie miała przypisaną wartość.
             # Tymczasowo symulujemy jej wartość jako `0` dla demonstracji.
@@ -153,7 +152,7 @@ class SymbolTable(dict):
             iterator = self.iterators[name]
             return iterator.memory_offset, iterator.limit_index
         else:
-            raise ValueError(f"Undeclared iterator '{name}'.")
+            raise Exception(f"Undeclared iterator '{name}'.")
     
     # getting variable
     def get_variable(self, name):
@@ -162,7 +161,7 @@ class SymbolTable(dict):
         elif name in self.iterators:
             return self.iterators[name]
         else:
-            raise ValueError(f"Error: Undeclared variable '{name}'.")
+            raise Exception(f"Error: Undeclared variable '{name}'.")
         
     # getting array at value
     def get_array_at(self, name, index):
@@ -170,9 +169,9 @@ class SymbolTable(dict):
             try:
                 return self[name].get_memory_index(index)
             except AttributeError:
-                raise ValueError(f"Error: Non-array '{name}' used as an array.")
+                raise Exception(f"Error: Non-array '{name}' used as an array.")
         else:
-            raise ValueError(f"Error: Undeclared array '{name}'.")
+            raise Exception(f"Error: Undeclared array '{name}'.")
         
     # getting address of variable or array
     def get_address(self, name):
@@ -188,7 +187,7 @@ class SymbolTable(dict):
         if name in self.procedures:
             return self.procedures[name]
         else:
-            raise ValueError(f"Error: Undeclared procedure'{name}'.")
+            raise Exception(f"Error: Undeclared procedure'{name}'.")
         
 
 
