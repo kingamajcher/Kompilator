@@ -257,7 +257,7 @@ class MyParser(Parser):
         if p.PIDENTIFIER in self.symbol_table or p.PIDENTIFIER in self.symbol_table.iterators:
             return p.PIDENTIFIER
         else:
-            return "Undeclared pidentifier ", p.PIDENTIFIER
+            return "undeclared", p.PIDENTIFIER
 
     @_('PIDENTIFIER LBRACKET number RBRACKET')
     def identifier(self, p):
