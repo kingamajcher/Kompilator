@@ -246,14 +246,14 @@ class MyParser(Parser):
         if p.PIDENTIFIER in self.symbol_table or p.PIDENTIFIER in self.symbol_table.iterators:
             return p.PIDENTIFIER
         else:
-            return "undeclared", p.PIDENTIFIER
+            return "other", p.PIDENTIFIER
 
     @_('PIDENTIFIER LBRACKET PIDENTIFIER RBRACKET')
     def identifier(self, p):
         if p.PIDENTIFIER1 in self.symbol_table and type(self.symbol_table[p.PIDENTIFIER1]) == Variable:
             return "array", p.PIDENTIFIER0, ("id", p.PIDENTIFIER1)
         else:
-            return "array", p.PIDENTIFIER0, ("id", ("undeclared", p.PIDENTIFIER1))
+            return "array", p.PIDENTIFIER0, ("id", ("other", p.PIDENTIFIER1))
 
     @_('PIDENTIFIER LBRACKET number RBRACKET')
     def identifier(self, p):

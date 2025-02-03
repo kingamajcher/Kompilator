@@ -29,18 +29,16 @@ class CodeGenerator:
                 self.generate_code_procedure(procedure)
 
 
-    def generate_code_procedure(self, proc):
-        _, proc_head, declarations, commands = proc
+    def generate_code_procedure(self, procedure):
+        _, proc_head, declarations, commands = procedure
         name, parameters = proc_head
 
-        if name in self.defined_procedures:
-            raise Exception(f"Error: redefinition of procedure '{name}'")
+        """if name in self.defined_procedures:
+            raise Exception(f"Error: Redefinition of procedure '{name}'")
         self.defined_procedures.add(name)
 
         for parameter in parameters:
-            if isinstance(parameter, tuple):
-                if not parameter[0].startswith("T"):
-                    raise Exception(f"Error: invalid parameter in procedure '{name}'")
+            self.symbol_table.is_parameter_valid(parameter, name)"""
                 
         self.symbol_table.add_procedure(name, parameters, declarations, commands)
 
@@ -101,12 +99,21 @@ class CodeGenerator:
             _, value = command
             self.generate_code_write(value)
         elif command_type == "proc_call":
-            _, name, args = command
-            self.generate_code_proc_call(name, args)
+            _, name, arguments = command
+            self.generate_code_proc_call(name, arguments)
                 
     def generate_code_assign(self, variable, expression):
         if isinstance(variable, tuple):
-            if variable[0] == "undeclared":
+            variable_type = variable[0]
+            if variable_type == "array":
+                name = variable[1]
+                index = variable[2]
+                self.handle_array_at_index(name, index)
+                self.code.append("LOAD 12")
+                self.code.append("STORE 13")
+                self.generate_code_expression(expression)
+                self.code.append("STOREI 13")
+            elif variable_type == "other":
                 if variable[1] in self.symbol_table.iterators:
                     raise Exception(f"Error: Cannot assign value to iterator '{variable[1]}'")
                 else:
@@ -116,14 +123,7 @@ class CodeGenerator:
                         self.code.append(f"STOREI {address}")
                     else:
                         self.code.append(f"STORE {address}")
-            elif variable[0] == "array":
-                name = variable[1]
-                index = variable[2]
-                self.handle_array_at_index(name, index)
-                self.code.append("LOAD 12")
-                self.code.append("STORE 13")
-                self.generate_code_expression(expression)
-                self.code.append("STOREI 13")
+
         else:
             if isinstance(variable, str):
                 self.symbol_table[variable].initialized = True
@@ -214,64 +214,61 @@ class CodeGenerator:
 
 
     def generate_code_for(self, iterator, start_value, end_value, commands, downto):
-        if start_value[0] == "num" and end_value[0] == "num":
-            if downto:
-                if start_value[1] < end_value[1]:
-                    raise Exception("Error: Invalid range for loop")
-            else:
-                if start_value[1] > end_value[1]:
-                    raise Exception("Error: Invalid range for loop")
-                
+        if start_value[0] == end_value[0] == "NUM":
+            if start_value[1] > end_value[1] and downto == False:
+                raise Exception(f"Invalid for loop scope.")
+            elif start_value[1] < end_value[1] and downto == True:
+                raise Exception(f"Invalid for loop scope.")
+
         if iterator in self.symbol_table:
-            raise Exception(f"Error: Redeclaration of iterator '{iterator}'")
-        
-        self.code.append("SET 1")
-        self.code.append("STORE 10")
-        
+            raise Exception(f"Overloading name of iterator {iterator}.")
+
+            
         if downto:
-            operation = "SUB 10"
+            operation = f"SUB 10"
         else:
-            operation = "ADD 10"
+            operation = f"ADD 10"
 
         self.iterators.append(iterator)
-        start_address, end_address = self.symbol_table.add_iterator(iterator)
+        start_addr, end_addr = self.symbol_table.add_iterator(iterator)
 
+        self.code.append("SET 1")
+        self.code.append(f"STORE 10")
+
+        self.generate_code_expression(start_value)
+        self.code.append(f"STORE {start_addr}")
         self.generate_code_expression(end_value)
         self.code.append(operation)
-        self.code.append(f"STORE {end_address}")
-        self.generate_code_expression(start_value)
-        self.code.append(f"STORE {start_address}")
+        self.code.append(f"STORE {end_addr}")
 
-        for_start = len(self.code)
+        start_of_for = len(self.code)
 
-        self.code.append(f"SUB {end_address}")
+        self.code.append(f"LOAD {start_addr}")
+        self.code.append(f"SUB {end_addr}")
 
-        # zakres petli for błędny więc się nie wykona
-        end_invalid_range = len(self.code)
-        if downto:
-            self.code.append("JNEG end_invalid_range")
-        else:
-            self.code.append("JPOS end_invalid_range")
-
-        commands_start = len(self.code)
-        self.code.append("JZERO end_of_for")
+        it = len(self.code)
+        
         self.generate_code_commands(commands)
-        self.code.append(f"LOAD {start_address}")
-        self.code.append(f"{operation}")
-        self.code.append(f"STORE {start_address}")
+        
+        self.code.append(f"LOAD {start_addr}")
+        self.code.append(operation)
+        self.code.append(f"STORE {start_addr}")
 
-        for_end = len(self.code)
-        self.code[commands_start] = f"JZERO {for_end - for_start - 1}"
-        jump = str(-(for_end - for_start + 1))
-        self.code.append(f"JUMP {jump}")
-        end = len(self.code)
-        self.code[end_invalid_range] = self.code[end_invalid_range].replace("end_invalid_range", str(end - end_invalid_range))
+        end_of_for = len(self.code)
+        self.code.insert(it, f"JZERO {end_of_for - start_of_for}")
+        self.code.append(f"JUMP -{end_of_for - start_of_for + 1}")
 
     def generate_code_read(self, identifier):
         if isinstance(identifier, tuple):
-            if identifier[0] == "undeclared":
+            identifier_type = identifier[0]
+            if identifier_type == "array":
+                name = identifier[1]
+                index = identifier[2]
+                self.handle_array_at_index(name, index)
+                self.code.append("GET 0")
+                self.code.append("STOREI 12")
+            elif identifier_type == "other":
                 if identifier[1] in self.symbol_table.iterators:
-                    #iterator_address, _ = self.symbol_table.get_iterator(identifier[1])
                     iterator = self.symbol_table.get_iterator(identifier[1])
                     iterator_address = iterator.memory_offset
                     self.code.append(f"GET {iterator_address}")
@@ -282,12 +279,6 @@ class CodeGenerator:
                         self.code.append(f"STOREI {address}")
                     else:
                         raise Exception(f"Error: Undeclared variable '{identifier[1][1]}'")
-            elif identifier[0] == "array":
-                name = identifier[1]
-                index = identifier[2]
-                self.handle_array_at_index(name, index)
-                self.code.append("GET 0")
-                self.code.append("STOREI 12")
         else:
             if identifier in self.symbol_table:
                 self.symbol_table[identifier].initialized = True
@@ -297,12 +288,18 @@ class CodeGenerator:
                 raise Exception(f"Error: Cannot read to iterator '{identifier}'")
 
     def generate_code_write(self, value):
-        value_type = value[0]
-        if value_type == "id":
+        write_type = value[0]
+        if write_type == "id":
             if isinstance(value[1], tuple):
-                if value[1][0] == "undeclared":
+                value_type = value[1][0]
+                if value_type == "array":
+                    name = value[1][1]
+                    index = value[1][2]
+                    self.handle_array_at_index(name, index)
+                    self.code.append("LOADI 12")
+                    self.code.append("PUT 0")
+                elif value_type == "other":
                     if value[1][1] in self.symbol_table.iterators:
-                        #iterator_memory_offset, _ = self.symbol_table.get_iterator(value[1][1])
                         iterator = self.symbol_table.get_iterator(value[1][1])
                         iterator_address = iterator.memory_offset
                         self.code.append(f"PUT {iterator_address}")
@@ -313,72 +310,65 @@ class CodeGenerator:
                             self.code.append("PUT 0")
                         else:
                             raise Exception(f"Error: Undeclared variable '{value[1][1]}'")
-                elif value[1][0] == "array":
-                    name = value[1][1]
-                    index = value[1][2]
-                    self.handle_array_at_index(name, index)
-                    self.code.append("LOADI 12")
-                    self.code.append("PUT 0")
                 else:
-                    raise Exception(f"Error: Invalid value type '{value[1][0]}' for WRITE")
+                    raise Exception(f"Error: Invalid value type '{value_type}' for WRITE")
             else:
                 variable = self.symbol_table.get_address(value[1])
                 self.code.append(f"PUT {variable}")
-        elif value_type == "num":
+        elif write_type == "num":
             self.code.append(f"SET {value[1]}")
             self.code.append(f"PUT 0")
         else:
             raise Exception(f"Error: invalid value type '{value[0]}' for WRITE")
 
-    def generate_code_proc_call(self, name, args):
-        self.previous_procedure = self.symbol_table.current_procedure
-        # Procedura musi istnieć
+    def generate_code_proc_call(self, name, arguments):
         if name not in self.symbol_table.procedures:
-            raise Exception(f"Unknown procedure {name}.")
-            
-        # Argumenty muszą być wcześniej zadeklarowane jako zmienne
-        for arg in args:
-            if arg not in self.symbol_table:
-                raise Exception(f"Undeclared argument {arg}.")
-            
-        # Obsługa rekurencji
-        if name == self.symbol_table.current_procedure:
-            raise Exception(f"Recursive call detected in procedure {name}.")
-                    
-        self.symbol_table.current_procedure = name
-        #_, _, params, local_variables, commands = self.symbol_table.get_procedure(self.symbol_table.current_procedure)   
-        procedure = self.symbol_table.get_procedure(self.symbol_table.current_procedure)
-        params = procedure.parameters
-        # Mapowanie
-        if len(args) != len(params):
-            raise Exception(f"Incorrect number of arguments for procedure {name}. Expected {len(params)}, got {len(args)}.")
-        
-        for (param_name, param_obj), arg in zip(params.items(), args):
-            if isinstance(param_obj, Array):  # Jeśli parametr jest tablicą
-                if arg not in self.symbol_table or not isinstance(self.symbol_table[arg], Array):
-                    raise Exception(f"Expected array for parameter '{param_name}', but got variable '{arg}'.")
-            else:  # Jeśli parametr jest zmienną, nie może dostać tablicy
-                if arg in self.symbol_table and isinstance(self.symbol_table[arg], Array):
-                    raise Exception(f"Expected variable for parameter '{param_name}', but got array '{arg}'.")
+            raise Exception(f"Error: Unknown procedure '{name}'.")
 
-        # Mapowanie parametrów -> zapisujemy adresy argumentów, nie wartości!
-        for param, arg in zip(params, args):
-            param_address = params[param]  # Adres parametru
-            arg_address = self.symbol_table.get_address(arg)  # Adres argumentu
-            self.code.append(f"SET {arg_address}")  # Przekazujemy adres argumentu do parametru
-            self.code.append(f"STORE {param_address}")
+        if name == self.symbol_table.current_procedure:
+            raise Exception(f"Error: Recursive call of procedure '{name}'.")
+        
+        self.previous_procedure = self.symbol_table.current_procedure
+        self.symbol_table.current_procedure = name
+            
+        for argument in arguments:
+            if argument not in self.symbol_table:
+                raise Exception(f"Error: Undeclared argument '{argument}' for procedure '{name}'.")
+            
+        procedure = self.symbol_table.get_procedure(self.symbol_table.current_procedure)
+        parameters = procedure.parameters
+        
+        if len(arguments) != len(parameters):
+            raise Exception(f"Error: Incorrect number of arguments for procedure {name}. Expected {len(parameters)}, got {len(arguments)}.")
+        
+        for i, (parameter_name, parameter_type) in enumerate(parameters.items()):
+            argument = arguments[i]
+
+            if isinstance(parameter_type, Array):
+                if argument not in self.symbol_table or not isinstance(self.symbol_table[argument], Array):
+                    raise Exception(f"Expected array for parameter '{parameter_name}', but got variable '{argument}'.")
+            elif argument in self.symbol_table and isinstance(self.symbol_table[argument], Array):
+                raise Exception(f"Expected variable for parameter '{parameter_name}', but got array '{argument}'.")
+
+
+        for parameter, argument in zip(parameters, arguments):
+            parameter_address = parameters[parameter]
+            argument_address = self.symbol_table.get_address(argument)
+            self.code.append(f"SET {argument_address}")
+            self.code.append(f"STORE {parameter_address}")
         
         procedure = self.symbol_table.procedures[name]
-        if procedure.call_count >= 10:
-            raise Exception(f"Exceeded maximum call count for procedure {name}.")
 
         return_memory_index = procedure.return_registers[procedure.call_count]
         procedure.call_count += 1
         
-        self.code.append(f"SET {len(self.code) + 3}")
+        current_code_len = len(self.code)
+        self.code.append(f"SET {current_code_len + 3}")
         self.code.append(f"STORE {return_memory_index}")
-        proc_base = procedure.memory_offset
-        self.code.append(f"JUMP {proc_base - len(self.code)}")
+        procedure_offset = procedure.memory_offset
+        current_code_len = len(self.code)
+        self.code.append(f"JUMP {procedure_offset - current_code_len}")
+
         procedure.call_count -= 1
 
         if self.previous_procedure:
@@ -475,19 +465,32 @@ class CodeGenerator:
             raise Exception(f"Error: Invalid expression type '{expression_type}'")
     
     def add(self, expression):
-        self.generate_code_expression(expression[1])
-        self.code.append("STORE 1")
-        self.generate_code_expression(expression[2])
-        self.code.append("ADD 1")
+        a = expression[1]
+        b = expression[2]
+
+        if a[0] == "num" and b[0] == "num":
+            result = a[1] + b[1]
+            self.code.append(f"SET {result}")
+        else:
+            self.generate_code_expression(expression[1])
+            self.code.append("STORE 1")
+            self.generate_code_expression(expression[2])
+            self.code.append("ADD 1")
 
     def substract(self, expression):
-        self.generate_code_expression(expression[2])
-        self.code.append("STORE 1")
-        self.generate_code_expression(expression[1])
-        self.code.append("SUB 1")
+        a = expression[1]
+        b = expression[2]
+
+        if a[0] == "num" and b[0] == "num":
+            result = a[1] - b[1]
+            self.code.append(f"SET {result}")
+        else:
+            self.generate_code_expression(expression[2])
+            self.code.append("STORE 1")
+            self.generate_code_expression(expression[1])
+            self.code.append("SUB 1")
 
     def multiply(self, expression):
-        # a * b
         a = expression[1]
         b = expression[2]
 
@@ -499,8 +502,8 @@ class CodeGenerator:
             # p2 -> abs(b)
             # p3 -> sign(a)
             # p4 -> sign(b)
-            # p5 -> wynik
-            # p6 -> pomocnicze b do sprawdzania nieparzystości
+            # p5 -> result
+            # p6 -> helper b for checking if number is odd
 
             # znaki mnożonych wartości i wynik wstępnie ujstawiony na 0
             self.code.append("SUB 0")
@@ -579,8 +582,8 @@ class CodeGenerator:
 
 
     def divide(self, expression):
-        a = expression[1] # a
-        b = expression[2] # b
+        a = expression[1]
+        b = expression[2]
 
         if b[0] == "num" and b[1] == 0:
             self.code.append("SUB 0")
@@ -641,7 +644,7 @@ class CodeGenerator:
             self.generate_code_expression(b)
 
             # jesli jest 0 to dziki jump do konca i zwraca 0
-            self.code.append("JZERO 70")
+            self.code.append("JZERO 81")
 
             # jesli jest 1 to dziki jump i zwraca dzielną
             self.code.append("STORE 2")
@@ -657,9 +660,7 @@ class CodeGenerator:
             self.code.append("JUMP 3")
             self.code.append("LOAD 1")
             self.code.append("STORE 5")
-            self.code.append("JUMP 57")
-
-            # jesli jest 2 to dziki jump do robienia half i zwraca wartośc
+            self.code.append("JUMP 68")
 
             # jesli niedodatnie to wykona, jeśli dodatnie to skoczy o 6
             self.code.append("LOAD 2")
@@ -771,29 +772,22 @@ class CodeGenerator:
         self.code.append("LOAD 7")
 
     def handle_identifier(self, expression):
-        # handling of undeclared variables
-        if expression[0] == "undeclared":
-            if expression[1] in self.symbol_table.iterators:
-                #iterator_address, _ = self.symbol_table.get_iterator(expression[1])
-                iterator = self.symbol_table.get_iterator(expression[1])
-                iterator_address = iterator.memory_offset
-                self.code.append(f"LOAD {iterator_address}")
-            elif isinstance(self.symbol_table.get_address_in_procedure(expression[1]), Variable):
-                address = self.symbol_table.get_address_in_procedure(expression[1])
-                self.code.append(f"LOADI {address}")
-            else:
-                raise Exception(f"Error: undeclared variable '{expression[1]}'")
-        # handling of array indices
-        elif expression[0] == "array":
-            name = expression[1]
-            index = expression[2]
-
-            self.handle_array_at_index(name, index)
-
-            self.code.append("LOADI 12")
-
-
-        # handling of variables
+        if isinstance(expression, tuple):
+            if expression[0] == "array":
+                name = expression[1]
+                index = expression[2]
+                self.handle_array_at_index(name, index)
+                self.code.append("LOADI 12")
+            elif expression[0] == "other":
+                if expression[1] in self.symbol_table.iterators:
+                    iterator = self.symbol_table.get_iterator(expression[1])
+                    iterator_address = iterator.memory_offset
+                    self.code.append(f"LOAD {iterator_address}")
+                elif isinstance(self.symbol_table.get_address_in_procedure(expression[1]), Variable):
+                    address = self.symbol_table.get_address_in_procedure(expression[1])
+                    self.code.append(f"LOADI {address}")
+                else:
+                    raise Exception(f"Error: undeclared variable '{expression[1]}'")
         elif isinstance(expression[0], str):
             name = expression
             if name in self.symbol_table:
@@ -818,7 +812,7 @@ class CodeGenerator:
             self.code.append(f"SET {address}")
             self.code.append(f"STORE 12")
         elif isinstance(index, tuple) and index[0] == "id": # odwołanie do identifiera
-            if isinstance(index[1], tuple) and index[1][0] == "undeclared": # jeśli undeclared to może być iterator lub w procedurze
+            if isinstance(index[1], tuple) and index[1][0] == "other":
                 name = index[1][1]
                 if name in self.symbol_table.iterators:
                     #iterator_address, _ = self.symbol_table.get_iterator(name)
