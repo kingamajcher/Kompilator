@@ -809,7 +809,6 @@ class CodeGenerator:
             raise Exception(f"Error: Array '{name}' not declared")
         if not isinstance(self.symbol_table[name], Array):
             raise Exception(f"Error: '{name}' is not an array")
-        address = None
         first_index = self.symbol_table[name].first_index
         memory_offset_of_first_index = self.symbol_table.get_address([name, first_index])
         array_offset = memory_offset_of_first_index - first_index # miejsce, gdzie w tablicy było by zero

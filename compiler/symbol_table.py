@@ -1,4 +1,3 @@
-import warnings
 class Variable:
     def __init__(self, memory_offset, is_local=False, is_parameter=False):
         self.memory_offset = memory_offset
@@ -25,7 +24,7 @@ class Array:
 
     def get_memory_index(self, index):
         if index < self.first_index or index > self.last_index:
-            raise IndexError("Array index out of bounds.")
+            raise ValueError(f"Error: Array index '{index}' out of bounds for [{self.first_index} : {self.last_index}].")
         return self.memory_offset + (index - self.first_index)
 
     def __repr__(self):
@@ -58,13 +57,13 @@ class SymbolTable(dict):
             procedure = self.procedures[self.current_procedure]
 
             if name in procedure.local_variables:
-                raise ValueError(f"Local variable '{name}' already declared in procedure {self.current_procedure}.")
+                raise ValueError(f"Error: Redeclaration of local variable '{name}' in procedure '{self.current_procedure}'.")
 
             procedure.local_variables[name] = Variable(self.memory_offset, is_local=True)
         
         else:
             if name in self:
-                warnings.warn("Variable '{name}' already declared globally.", DeprecationWarning)
+                pass
             self[name] = Variable(self.memory_offset)
 
         self.memory_offset += 1 
@@ -76,14 +75,14 @@ class SymbolTable(dict):
         elif name in self.iterators:
             return self.iterators[name]
         else:
-            raise ValueError(f"Unknow variable '{name}'.")
+            raise ValueError(f"Error: Undeclared variable '{name}'.")
         
 
     def add_array(self, name, first_index, last_index):
         if name in self:
-            raise ValueError(f"Array '{name}' already declared.")
+            raise ValueError(f"Error: Redeclaration of array '{name}'.")
         elif first_index > last_index:
-            raise IndexError(f"First_index > last_index at array '{name}'.")
+            raise ValueError(f"Error: Invalid range [{first_index} : {last_index}] for array '{name}'.")
         
         array_size = last_index - first_index + 1
         self[name] = Array(first_index, last_index, self.memory_offset)
@@ -95,9 +94,9 @@ class SymbolTable(dict):
             try:
                 return self[name].get_memory_index(index)
             except:
-                raise Exception(f"Non-array '{name}' used as an array.")
+                raise ValueError(f"Error: Attempt to use variable '{name}' as an array.")
         else:
-            raise ValueError(f"Undeclared array '{name}'.")  
+            raise ValueError(f"Error: Undeclared array '{name}'.")  
       
 
     def add_iterator(self, name):
@@ -112,16 +111,15 @@ class SymbolTable(dict):
         if name in self.iterators:
             iterator = self.iterators[name]
             return iterator
-            #return iterator.memory_offset, iterator.limit_memory_offset
         else:
-            raise ValueError(f"Undeclared iterator '{name}'.")
+            raise ValueError(f"Error: Undeclared iterator '{name}'.")
         
 
     def add_procedure(self, name, parameters, local_variables, commands):
         if name in self.procedures:
-            raise ValueError(f"Redeclaration of procedure '{name}'.")
+            raise ValueError(f"Error: Redeclaration of procedure '{name}'.")
         if name in self:
-            raise Exception(f"Overloading name of the procedure {name}.")
+            raise ValueError(f"Error: Name '{name}' is already in use.")
 
         self.current_procedure = name
 
@@ -151,7 +149,6 @@ class SymbolTable(dict):
 
     
     def is_procedure_valid(self, name):
-        #_, _, _, _, commands = self.get_procedure(name)
         procedure  = self.get_procedure(name)
         commands = procedure.commands
 
@@ -159,26 +156,17 @@ class SymbolTable(dict):
             if command[0] == "proc_call":
                 called_procedure = command[1]
                 if called_procedure not in self.procedures:
-                    raise Exception(f"Procedure {called_procedure} called in {name} is not defined")
+                    raise ValueError(f"Error: Procedure '{called_procedure}' does not exist.")
                 if list(self.procedures.keys()).index(called_procedure) > list(self.procedures.keys()).index(name):
-                    raise Exception(f"Procedure {called_procedure} must be defined before it is called in {name}")
+                    raise ValueError(f"Error: Cannot call procedure '{called_procedure}' before it is defined.")
 
             
     def get_procedure(self, name):
         if name in self.procedures:
             procedure = self.procedures[name]
-            #return procedure.name, procedure.memory_offset, procedure.parameters, procedure.local_variables, procedure.commands
             return procedure
         else:
-            raise ValueError(f"Undeclared procedure '{name}'.")
-        
-        
-    def add_const(self, value):
-        if value in self.constants:
-            return self.constants[value]
-        self.constants[value] = self.memory_offset
-        self.memory_offset += 1
-        return self.memory_offset - 1
+            raise ValueError(f"Error: Undeclared procedure '{name}'.")
         
 
     def get_address_in_procedure(self, name):
@@ -194,4 +182,6 @@ class SymbolTable(dict):
         if type(name) == str:
             return self.get_variable(name).memory_offset
         else:
-            return self.get_array_at_index(name[0], name[1]) 
+            array_name = name[0]
+            index = name[1]
+            return self.get_array_at_index(array_name, index) 
