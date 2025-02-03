@@ -614,13 +614,13 @@ class CodeGenerator:
             # k
             self.code.append("SET 1")
             self.code.append("STORE 6")
-            self.code.append("STORE 9")
+            #self.code.append("STORE 9")
 
             # ładujemy dzielną
             self.generate_code_expression(a)
 
             # jesli jest zerem to dziki skok na koniec zeby zwracalo od razu zero
-            self.code.append("JZERO 80")
+            self.code.append("JZERO 78")
 
             # jesli niedodatnie to wykona, jeśli dodatnie to skoczy o 6
             self.code.append("JPOS 6")
@@ -644,10 +644,10 @@ class CodeGenerator:
             self.generate_code_expression(b)
 
             # jesli jest 0 to dziki jump do konca i zwraca 0
-            self.code.append("JZERO 81")
+            self.code.append("JZERO 67")
 
             # jesli jest 1 to dziki jump i zwraca dzielną
-            self.code.append("STORE 2")
+            """self.code.append("STORE 2")
             
             self.code.append("SUB 9")
             self.code.append("JZERO 2")
@@ -663,7 +663,7 @@ class CodeGenerator:
             self.code.append("JUMP 68")
 
             # jesli niedodatnie to wykona, jeśli dodatnie to skoczy o 6
-            self.code.append("LOAD 2")
+            self.code.append("LOAD 2")"""
             self.code.append("JPOS 6")
 
             # ustawiamy wartość dzielnika 
