@@ -214,49 +214,58 @@ class CodeGenerator:
 
 
     def generate_code_for(self, iterator, start_value, end_value, commands, downto):
-        if start_value[0] == end_value[0] == "NUM":
-            if start_value[1] > end_value[1] and downto == False:
-                raise Exception(f"Invalid for loop scope.")
-            elif start_value[1] < end_value[1] and downto == True:
-                raise Exception(f"Invalid for loop scope.")
-
+        if start_value[0] == "num" and end_value[0] == "num":
+            if downto:
+                if start_value[1] < end_value[1]:
+                    raise Exception("Error: Invalid range for loop")
+            else:
+                if start_value[1] > end_value[1]:
+                    raise Exception("Error: Invalid range for loop")
+                
         if iterator in self.symbol_table:
-            raise Exception(f"Overloading name of iterator {iterator}.")
-
-            
+            raise Exception(f"Error: Redeclaration of iterator '{iterator}'")
+        
+        self.code.append("SET 1")
+        self.code.append("STORE 10")
+        
         if downto:
-            operation = f"SUB 10"
+            operation = "SUB 10"
         else:
-            operation = f"ADD 10"
+            operation = "ADD 10"
 
         self.iterators.append(iterator)
-        start_addr, end_addr = self.symbol_table.add_iterator(iterator)
+        start_address, end_address = self.symbol_table.add_iterator(iterator)
 
-        self.code.append("SET 1")
-        self.code.append(f"STORE 10")
-
-        self.generate_code_expression(start_value)
-        self.code.append(f"STORE {start_addr}")
         self.generate_code_expression(end_value)
         self.code.append(operation)
-        self.code.append(f"STORE {end_addr}")
+        self.code.append(f"STORE {end_address}")
+        self.generate_code_expression(start_value)
+        self.code.append(f"STORE {start_address}")
 
-        start_of_for = len(self.code)
+        for_start = len(self.code)
 
-        self.code.append(f"LOAD {start_addr}")
-        self.code.append(f"SUB {end_addr}")
+        self.code.append(f"SUB {end_address}")
 
-        it = len(self.code)
-        
+        end_invalid_range = len(self.code)
+        if downto:
+            self.code.append("JNEG end_invalid_range")
+        else:
+            self.code.append("JPOS end_invalid_range")
+
+        commands_start = len(self.code)
+        self.code.append("JZERO end_of_for")
         self.generate_code_commands(commands)
-        
-        self.code.append(f"LOAD {start_addr}")
-        self.code.append(operation)
-        self.code.append(f"STORE {start_addr}")
+        self.code.append(f"LOAD {start_address}")
+        self.code.append(f"{operation}")
+        self.code.append(f"STORE {start_address}")
 
-        end_of_for = len(self.code)
-        self.code.insert(it, f"JZERO {end_of_for - start_of_for}")
-        self.code.append(f"JUMP -{end_of_for - start_of_for + 1}")
+        for_end = len(self.code)
+        self.code[commands_start] = f"JZERO {for_end - for_start - 1}"
+        jump = str(-(for_end - for_start + 1))
+        self.code.append(f"JUMP {jump}")
+        end = len(self.code)
+        self.code[end_invalid_range] = self.code[end_invalid_range].replace("end_invalid_range", str(end - end_invalid_range))
+
 
     def generate_code_read(self, identifier):
         if isinstance(identifier, tuple):
