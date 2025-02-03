@@ -1,140 +1,157 @@
-class Array:
-    def __init__(self, memory_offset, first_index, last_index):
-        self.memory_offset = memory_offset
-        if first_index > last_index:
-            raise Exception (f"Error: First index of array is greater than last index.")
-        self.first_index = first_index
-        self.last_index = last_index
-
-    def __str__(self):
-        return f"Array '{self.name}' at memory index {self.memory_offset}, range [{self.first_index}:{self.last_index}]"
-    
-    def get_memory_index(self, index):
-        if index < self.first_index or index > self.last_index:
-            raise IndexError(f"Error: Array index out of bounds.")
-        return self.memory_offset + (index - self.first_index)
-    
-
+import warnings
 class Variable:
-    def __init__(self, memory_offset, is_local = False, is_parameter = False):
+    def __init__(self, memory_offset, is_local=False, is_parameter=False):
         self.memory_offset = memory_offset
         self.is_local = is_local
-        self.is_parameter = is_parameter
+        self.is_parameter = is_parameter  
         self.initialized = False
 
-    def __str__(self):
-        status = "Initialized" if self.initialized else "Uninitialized"
-        return f"{status} variable at memory index {self.memory_offset}"
-    
+    def __repr__(self):
+        return str(self.memory_offset)
 
 class Iterator:
-    def __init__(self, memory_offset, limit_index):
+    def __init__(self, memory_offset, limit_memory_offset):
         self.memory_offset = memory_offset
-        self.limit_index = limit_index
+        self.limit_memory_offset = limit_memory_offset
 
-    def __str__(self):
-        return f"Iterator at memory index {self.memory_offset}, limit index {self.limit_index}"
+    def __repr__(self):
+        return str(self.memory_offset)
 
+class Array:
+    def __init__(self, first_index, last_index, memory_offset):
+        self.first_index = first_index
+        self.last_index = last_index
+        self.memory_offset = memory_offset
+
+    def get_memory_index(self, index):
+        if index < self.first_index or index > self.last_index:
+            raise IndexError("Array index out of bounds.")
+        return self.memory_offset + (index - self.first_index)
+
+    def __repr__(self):
+        return str(self.memory_offset)
     
-
 class Procedure:
-    def __init__(self, name, parameters, local_variables, commands, memory_offset, return_register):
+    def __init__(self, name, memory_offset, parameters, local_variables, commands, return_register):
         self.name = name
+        self.memory_offset = memory_offset
         self.parameters = parameters
         self.local_variables = local_variables
         self.commands = commands
-        self.memory_offset = memory_offset
-        self.return_register = return_register
-        self.call_count = 0
+        self.return_registers = return_register
+        self.call_count = 0 
 
-    def __str__(self):
-        return (f"Procedure {self.name}:\n"
-                f"  Parameters: {self.parameters}\n"
-                f"  Local Variables: {self.local_variables}\n"
-                f"  Commands: {self.commands}\n"
-                f"  Memory Offset: {self.memory_offset}\n"
-                f"  Return Register: {self.return_register}\n")
-    
+    def __repr__(self):
+        return f"{self.name}, {self.memory_offset}, {self.parameters}, {self.local_variables}, {self.commands}, {self.return_register}"
 
 class SymbolTable(dict):
     def __init__(self):
         super().__init__()
         self.memory_offset = 20
-        #self.consts = {}
         self.iterators = {}
         self.procedures = {}
-        self.current_procedure = None
+        self.constants = {}
+        self.current_procedure = None 
 
-    # adding variables
     def add_variable(self, name):
-        if self.current_procedure != None:
+        if self.current_procedure:
             procedure = self.procedures[self.current_procedure]
-            if name in procedure.local_variables:
-                raise Exception(f"Error: Redeclaration of variable '{name}' in procedure {procedure}.")
-            procedure.local_variables[name] = Variable(self.memory_offset, is_local=True)
-        else:     
-            if name in self:
-                raise Exception(f"Error: Redeclaration of variable '{name}'.")
-            self[name] = Variable(self.memory_offset)
-        self.memory_offset += 1
 
-    # adding arrays
+            if name in procedure.local_variables:
+                raise ValueError(f"Local variable '{name}' already declared in procedure {self.current_procedure}.")
+
+            procedure.local_variables[name] = Variable(self.memory_offset, is_local=True)
+        
+        else:
+            if name in self:
+                warnings.warn("Variable '{name}' already declared globally.", DeprecationWarning)
+            self[name] = Variable(self.memory_offset)
+
+        self.memory_offset += 1 
+
+
+    def get_variable(self, name):  
+        if name in self:
+            return self[name]
+        elif name in self.iterators:
+            return self.iterators[name]
+        else:
+            raise ValueError(f"Unknow variable '{name}'.")
+        
+
     def add_array(self, name, first_index, last_index):
         if name in self:
-            raise Exception(f"Error: Redeclaration of array '{name}'.")
+            raise ValueError(f"Array '{name}' already declared.")
         elif first_index > last_index:
-            raise Exception(f"Invalid range for array '{name}'.")
-        self[name] = Array(self.memory_offset, first_index, last_index)
-        self.memory_offset += (last_index - first_index + 1)
+            raise IndexError(f"First_index > last_index at array '{name}'.")
+        
+        array_size = last_index - first_index + 1
+        self[name] = Array(first_index, last_index, self.memory_offset)
+        self.memory_offset += array_size
 
-    # adding constants
-    """def add_const(self, value):
-        if value not in self.consts:
-            self.consts[value] = self.memory_offset
-            self.memory_offset += 1
-        return self.consts[value]"""
-    
-    # adding iterators
-    def add_iterator(self, name):
-        limit_address = self.memory_offset
-        self.iterators[name] = Iterator(self.memory_offset + 1, limit_address)
-        self.memory_offset += 2
-        return self.memory_offset - 1, limit_address
 
-    # adding procedure
-    def add_procedure(self, name, parameters, local_variables, commands):
-        if name in self.procedures or name in self:
-            raise Exception(f"Error: Redeclaration of procedure {name}")
+    def get_array_at_index(self, name, index):
+        if name in self:
+            try:
+                return self[name].get_memory_index(index)
+            except:
+                raise Exception(f"Non-array '{name}' used as an array.")
         else:
-            self.current_procedure = name
+            raise ValueError(f"Undeclared array '{name}'.")  
+      
 
-            parameters_memory = {}
-            for parameter in parameters:
-                if isinstance(parameter, tuple) and parameter[0] == "T":
-                    array_name = parameter[1]
-                    parameters_memory[array_name] = Array(self.memory_offset, None, None)
-                    self.memory_offset += 1
-                else:
-                    parameters_memory[parameter] = Variable(self.memory_offset, is_parameter=True)
-                    self.memory_offset += 1
+    def add_iterator(self, name):
+        limit_memory_offset = self.memory_offset
+        iterator = Iterator(self.memory_offset + 1, limit_memory_offset) 
+        self.iterators[name] = iterator
+        self.memory_offset += 2
+        return self.memory_offset - 1, limit_memory_offset
+    
 
-            local_variables_memory = {}
-            for local_variable in local_variables:
-                local_variables_memory[local_variable] = Variable(self.memory_offset, is_local=True)
+    def get_iterator(self, name):
+        if name in self.iterators:
+            iterator = self.iterators[name]
+            return iterator
+            #return iterator.memory_offset, iterator.limit_memory_offset
+        else:
+            raise ValueError(f"Undeclared iterator '{name}'.")
+        
+
+    def add_procedure(self, name, parameters, local_variables, commands):
+        if name in self.procedures:
+            raise ValueError(f"Redeclaration of procedure '{name}'.")
+        if name in self:
+            raise Exception(f"Overloading name of the procedure {name}.")
+
+        self.current_procedure = name
+
+        parameters_memory = {}
+        for parameter in parameters:
+            if isinstance(parameter, tuple) and parameter[0].startswith("T"):
+                array_name = parameter[1]
+                parameters_memory[array_name] = Array(None, None, self.memory_offset) 
                 self.memory_offset += 1
-            
-            return_memory = []
-            for i in range(10):
-                return_memory.append(Variable(self.memory_offset + i, is_local=True))
-            self.memory_offset += 10
+            else:
+                parameters_memory[parameter] = Variable(self.memory_offset, is_parameter=True)
+                self.memory_offset += 1  
 
-            self.procedures[name] = Procedure(name, parameters_memory, local_variables_memory, commands, None, return_memory)
+        local_variables_memory = {}
+        for variable in local_variables:
+            local_variables_memory[variable] = Variable(self.memory_offset, is_local=True)
+            self.memory_offset += 1
+        
+        return_memory = [Variable(self.memory_offset + i, is_local=True) for i in range(100)] 
+        self.memory_offset += 100
 
-            self.is_procedure_valid(name)
-            self.current_procedure = None
+        if name not in self.procedures:
+            self.procedures[name] = Procedure(name, None, parameters_memory, local_variables_memory, commands, return_memory)  
+        
+        self.is_procedure_valid(name)
+        self.current_procedure = None  
 
-    # checking if procedure is valid
+    
     def is_procedure_valid(self, name):
+        #_, _, _, _, commands = self.get_procedure(name)
         procedure  = self.get_procedure(name)
         commands = procedure.commands
 
@@ -142,61 +159,39 @@ class SymbolTable(dict):
             if command[0] == "proc_call":
                 called_procedure = command[1]
                 if called_procedure not in self.procedures:
-                    raise Exception(f"Error: Procedure '{called_procedure}' is not declared.")
-                procedure_keys = list(self.procedures)
-                if procedure_keys.index(called_procedure) > procedure_keys.index(name):
-                    raise Exception(f"Error: Procedure {called_procedure} is called before it is defined.")
+                    raise Exception(f"Procedure {called_procedure} called in {name} is not defined")
+                if list(self.procedures.keys()).index(called_procedure) > list(self.procedures.keys()).index(name):
+                    raise Exception(f"Procedure {called_procedure} must be defined before it is called in {name}")
 
+            
+    def get_procedure(self, name):
+        if name in self.procedures:
+            procedure = self.procedures[name]
+            #return procedure.name, procedure.memory_offset, procedure.parameters, procedure.local_variables, procedure.commands
+            return procedure
+        else:
+            raise ValueError(f"Undeclared procedure '{name}'.")
+        
+        
+    def add_const(self, value):
+        if value in self.constants:
+            return self.constants[value]
+        self.constants[value] = self.memory_offset
+        self.memory_offset += 1
+        return self.memory_offset - 1
+        
 
-    # getting iterator
-    def get_iterator(self, name):
-        if name in self.iterators:
-            iterator = self.iterators[name]
-            return iterator.memory_offset, iterator.limit_index
-        else:
-            raise Exception(f"Undeclared iterator '{name}'.")
-    
-    # getting variable
-    def get_variable(self, name):
-        if name in self:
-            return self[name]
-        elif name in self.iterators:
-            return self.iterators[name]
-        else:
-            raise Exception(f"Error: Undeclared variable '{name}'.")
-        
-    # getting array at value
-    def get_array_at(self, name, index):
-        if name in self:
-            try:
-                return self[name].get_memory_index(index)
-            except AttributeError:
-                raise Exception(f"Error: Non-array '{name}' used as an array.")
-        else:
-            raise Exception(f"Error: Undeclared array '{name}'.")
-        
-    # getting address of variable or array
+    def get_address_in_procedure(self, name):
+        if self.current_procedure:
+            procedure = self.procedures[self.current_procedure]
+            if name in procedure.parameters:
+                return procedure.parameters[name]  
+            elif name in procedure.local_variables:
+                return procedure.local_variables[name]
+            
+
     def get_address(self, name):
         if type(name) == str:
             return self.get_variable(name).memory_offset
         else:
-            return self.get_array_at(name[0], name[1])
-        
-    # getting address in procedure
-    def get_address_in_procedure(self, name):
-        if self.current_procedure != None:
-            procedure = self.procedures[self.current_procedure]
-            if name in procedure.parameters:
-                return procedure.parameters[name]
-            elif name in procedure.local_variables:
-                return procedure.local_variables[name]
-            else:
-                raise Exception(f"Error: Undeclared variable '{name}' in procedure {procedure}.")
-    
-
-    # getting procedure
-    def get_procedure(self, name):
-        if name in self.procedures:
-            return self.procedures[name]
-        else:
-            raise Exception(f"Error: Undeclared procedure'{name}'.")
+            return self.get_array_at_index(name[0], name[1]) 
