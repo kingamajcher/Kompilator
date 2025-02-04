@@ -162,11 +162,6 @@ class SymbolTable(dict):
                     raise ValueError(f"Error: Procedure '{called_procedure}' does not exist.")
                 if list(self.procedures.keys()).index(called_procedure) > list(self.procedures.keys()).index(name):
                     raise ValueError(f"Error: Cannot call procedure '{called_procedure}' before it is defined.")
-                
-    """def is_parameter_valid(self, parameter, name):
-        if isinstance(parameter, tuple):
-            if not parameter[0].startswith("T"):
-                raise Exception(f"Error: invalid parameter '{parameter}' in procedure '{name}'")"""
 
             
     def get_procedure(self, name):

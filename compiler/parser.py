@@ -20,14 +20,12 @@ class MyParser(Parser):
     )
 
 
-
     # Program
     @_('procedures main')
     def program_all(self, p):
         ast = ("program", p.procedures, p.main)
-        print("\nAST:", ast)
-        asm_code = self.generator.generate(ast)
-        return asm_code
+        code = self.generator.generate(ast)
+        return code
 
 
     # Procedures

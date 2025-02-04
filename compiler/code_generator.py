@@ -32,13 +32,6 @@ class CodeGenerator:
     def generate_code_procedure(self, procedure):
         _, proc_head, declarations, commands = procedure
         name, parameters = proc_head
-
-        """if name in self.defined_procedures:
-            raise Exception(f"Error: Redefinition of procedure '{name}'")
-        self.defined_procedures.add(name)
-
-        for parameter in parameters:
-            self.symbol_table.is_parameter_valid(parameter, name)"""
                 
         self.symbol_table.add_procedure(name, parameters, declarations, commands)
 
@@ -51,7 +44,6 @@ class CodeGenerator:
         self.generate_code_commands(commands)
         procedure = self.symbol_table.procedures[name]
 
-        # call count sprawdic
         return_memory_index = procedure.return_registers[procedure.call_count]
 
         self.code.append(f"RTRN {return_memory_index}")
@@ -60,7 +52,7 @@ class CodeGenerator:
       
 
     def generate_code_main(self, main):
-        _, declarations, commands = main
+        _, _, commands = main
         self.generate_code_commands(commands)
 
 
@@ -610,7 +602,7 @@ class CodeGenerator:
             # p6 -> k
             # p7 -> pomocnicze abs(a)
             # p8 -> pomocnicze abs(b)
-            # p9 -> pomocnicze (nie ważne co tam jest)
+            # p9 -> 1
             # p11 -> b
             # p14 -> a
 
@@ -631,7 +623,7 @@ class CodeGenerator:
             self.generate_code_expression(a)
             self.code.append("STORE 14")
 
-            # jesli jest zerem to dziki skok na koniec zeby zwracalo od razu zero
+            # jesli jest zerem to skok na koniec
             self.code.append("JZERO 98")
 
             # jesli niedodatnie to wykona, jeśli dodatnie to skoczy o 6
@@ -656,10 +648,10 @@ class CodeGenerator:
             self.generate_code_expression(b)
             self.code.append("STORE 11")
 
-            # jesli jest 0 to dziki jump do konca i zwraca 0
+            # jesli jest 0 to  jump do konca i zwraca 0
             self.code.append("JZERO 85")
 
-            # jesli jest 1 to dziki jump i zwraca dzielną
+            # jesli jest 1 to jump i zwraca dzielną
             self.code.append("STORE 2")
             
             self.code.append("SUB 9")
@@ -698,7 +690,6 @@ class CodeGenerator:
             # odejmnij b
             self.code.append("SUB 8")
 
-            # poskakaj sobie
             self.code.append("JPOS 3")
             self.code.append("JZERO 2")
             self.code.append("JUMP 8")
@@ -712,7 +703,7 @@ class CodeGenerator:
             self.code.append("STORE 6")
             self.code.append("JUMP -11")
 
-            # dzielimy sobie przez 2
+            # dzielimy przez 2
             self.code.append("LOAD 8")
             self.code.append("HALF")
             self.code.append("STORE 8")
@@ -753,7 +744,7 @@ class CodeGenerator:
 
             self.code.append("JUMP -22")
 
-            # sprawdzanie znaku
+            # sprawdzanie znaku i poprawki z nią związane
             self.code.append("LOAD 3")
             self.code.append("ADD 4")
             self.code.append("JZERO 10")
@@ -832,17 +823,16 @@ class CodeGenerator:
             raise Exception(f"Error: '{name}' is not an array")
         first_index = self.symbol_table[name].first_index
         memory_offset_of_first_index = self.symbol_table.get_address([name, first_index])
-        array_offset = memory_offset_of_first_index - first_index # miejsce, gdzie w tablicy było by zero
+        array_offset = memory_offset_of_first_index - first_index
 
-        if isinstance(index, int): # odwołanie do konkretnej liczby
+        if isinstance(index, int):
             address = self.symbol_table.get_address([name, index])
             self.code.append(f"SET {address}")
             self.code.append(f"STORE 12")
-        elif isinstance(index, tuple) and index[0] == "id": # odwołanie do identifiera
+        elif isinstance(index, tuple) and index[0] == "id":
             if isinstance(index[1], tuple) and index[1][0] == "other":
                 name = index[1][1]
                 if name in self.symbol_table.iterators:
-                    #iterator_address, _ = self.symbol_table.get_iterator(name)
                     iterator = self.symbol_table.get_iterator(name)
                     iterator_address = iterator.memory_offset
                     self.code.append(f"SET {array_offset}")
@@ -863,7 +853,7 @@ class CodeGenerator:
                     self.code.append(f"STORE 12")
                 else:
                     raise Exception(f"Undeclared index variable '{name}'.")
-            elif isinstance(index[1], str): # odwołanie do zmiennej
+            elif isinstance(index[1], str):
                 name = index[1]
                 variable_address = self.symbol_table.get_address(name)
                 if not self.symbol_table[name].initialized:
