@@ -481,9 +481,9 @@ class CodeGenerator:
             result = a[1] + b[1]
             self.code.append(f"SET {result}")
         else:
-            self.generate_code_expression(expression[1])
+            self.generate_code_expression(a)
             self.code.append("STORE 1")
-            self.generate_code_expression(expression[2])
+            self.generate_code_expression(b)
             self.code.append("ADD 1")
 
     def substract(self, expression):
@@ -494,9 +494,9 @@ class CodeGenerator:
             result = a[1] - b[1]
             self.code.append(f"SET {result}")
         else:
-            self.generate_code_expression(expression[2])
+            self.generate_code_expression(b)
             self.code.append("STORE 1")
-            self.generate_code_expression(expression[1])
+            self.generate_code_expression(a)
             self.code.append("SUB 1")
 
     def multiply(self, expression):
@@ -611,6 +611,8 @@ class CodeGenerator:
             # p7 -> pomocnicze abs(a)
             # p8 -> pomocnicze abs(b)
             # p9 -> pomocnicze (nie ważne co tam jest)
+            # p11 -> b
+            # p14 -> a
 
             # znaki dzielonych wartości
             self.code.append("SUB 0")
@@ -627,9 +629,10 @@ class CodeGenerator:
 
             # ładujemy dzielną
             self.generate_code_expression(a)
+            self.code.append("STORE 14")
 
             # jesli jest zerem to dziki skok na koniec zeby zwracalo od razu zero
-            self.code.append("JZERO 93")
+            self.code.append("JZERO 98")
 
             # jesli niedodatnie to wykona, jeśli dodatnie to skoczy o 6
             self.code.append("JPOS 6")
@@ -651,27 +654,22 @@ class CodeGenerator:
             
             # ładujemy dzielnik
             self.generate_code_expression(b)
+            self.code.append("STORE 11")
 
             # jesli jest 0 to dziki jump do konca i zwraca 0
-            self.code.append("JZERO 83")
+            self.code.append("JZERO 85")
 
             # jesli jest 1 to dziki jump i zwraca dzielną
             self.code.append("STORE 2")
             
             self.code.append("SUB 9")
             self.code.append("JZERO 2")
-            self.code.append("JUMP 12")
-            self.code.append("LOAD 3")
-            self.code.append("JZERO 5")
-            self.code.append("LOAD 5")
-            self.code.append("SUB 1")
-            self.code.append("STORE 5")
-            self.code.append("JUMP 5")
-            self.code.append("LOAD 1")
+            self.code.append("JUMP 6")
+            self.code.append("LOAD 14")
             self.code.append("STORE 5")
             self.code.append("SUB 0")
             self.code.append("STORE 7")
-            self.code.append("JUMP 68")
+            self.code.append("JUMP 78")
 
             # jesli niedodatnie to wykona, jeśli dodatnie to skoczy o 6
             self.code.append("LOAD 2")
@@ -778,9 +776,27 @@ class CodeGenerator:
             self.code.append("STORE 7")
             self.code.append("LOAD 5")
 
+            self.code.append("LOAD 7")
+            self.code.append("SUB 11")
+            self.code.append("JZERO 2")
+            self.code.append("JUMP 6")
+            self.code.append("LOAD 5")
+            self.code.append("ADD 9")
+            self.code.append("STORE 5")
+            self.code.append("SUB 0")
+            self.code.append("STORE 7")
+            self.code.append("LOAD 5")
+
     def modulo(self, expression):
-        self.divide(expression)
-        self.code.append("LOAD 7")
+        a = expression[1]
+        b = expression[2]
+
+        if a[0] == "num" and b[0] == "num":
+            result = a[1] % b[1]
+            self.code.append(f"SET {result}")
+        else:
+            self.divide(expression)
+            self.code.append("LOAD 7")
 
     def handle_identifier(self, expression):
         if isinstance(expression, tuple):

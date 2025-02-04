@@ -46,7 +46,7 @@ class Procedure:
 class SymbolTable(dict):
     def __init__(self):
         super().__init__()
-        self.memory_offset = 20
+        self.memory_offset = 15
         self.iterators = {}
         self.procedures = {}
         self.constants = {}
