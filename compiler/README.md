@@ -34,4 +34,4 @@ gdzie:
 ## Uwagi
 
 - Każdą redeklarację zmiennej traktuję jako błąd, a więc deklaracja zmiennej `j`, która jest potem iteratorem  w pliku `example6.imp` jest błędna. Aby program działał poprawnie należy usunąć ją z deklaracji.
-- W pliku `example8.imp` podana jest błędna nazwa tablicy - `tab`. Aby program działa należyzmienić ją na poprawną nazwę, czyli `t`.
+- W pliku `example8.imp` podana jest błędna nazwa tablicy - `tab`. Aby program działał należy zmienić ją na poprawną nazwę, czyli `t`.
