@@ -72,25 +72,3 @@ class MyLexer(Lexer):
 
     def _is_in_range(self, value):
         return value <= 2**63 - 1
-
-    
-
-if __name__ == '__main__':
-    data0 = 'x := 3 + 42 * (s - t);'
-    data1 = '''# Silnia+Fibonacci
-    # ? 20
-    # > 2432902008176640000
-    # > 6765
-
-    PROGRAM IS
-        f[0:100], s[0:100], i[0:100], n
-    BEGIN
-        READ n;
-        f[0] := 0;
-        s[0] := 19;
-    END
-    '''
-
-    lexer = MyLexer()
-    for token in lexer.tokenize(data1):
-        print(token)

@@ -1,21 +1,3 @@
-class Variable:
-    def __init__(self, memory_offset, is_local=False, is_parameter=False):
-        self.memory_offset = memory_offset
-        self.is_local = is_local
-        self.is_parameter = is_parameter  
-        self.initialized = False
-
-    def __repr__(self):
-        return str(self.memory_offset)
-
-class Iterator:
-    def __init__(self, memory_offset, limit_memory_offset):
-        self.memory_offset = memory_offset
-        self.limit_memory_offset = limit_memory_offset
-
-    def __repr__(self):
-        return str(self.memory_offset)
-
 class Array:
     def __init__(self, first_index, last_index, memory_offset):
         self.first_index = first_index
@@ -30,6 +12,27 @@ class Array:
     def __repr__(self):
         return str(self.memory_offset)
     
+
+class Variable:
+    def __init__(self, memory_offset, is_local=False, is_parameter=False):
+        self.memory_offset = memory_offset
+        self.is_local = is_local
+        self.is_parameter = is_parameter  
+        self.initialized = False
+
+    def __repr__(self):
+        return str(self.memory_offset)
+
+
+class Iterator:
+    def __init__(self, memory_offset, limit_memory_offset):
+        self.memory_offset = memory_offset
+        self.limit_memory_offset = limit_memory_offset
+
+    def __repr__(self):
+        return str(self.memory_offset)
+
+    
 class Procedure:
     def __init__(self, name, memory_offset, parameters, local_variables, commands, return_register):
         self.name = name
@@ -43,6 +46,7 @@ class Procedure:
     def __repr__(self):
         return f"{self.name}, {self.memory_offset}, {self.parameters}, {self.local_variables}, {self.commands}, {self.return_register}"
 
+
 class SymbolTable(dict):
     def __init__(self):
         super().__init__()
@@ -51,6 +55,27 @@ class SymbolTable(dict):
         self.procedures = {}
         self.constants = {}
         self.current_procedure = None 
+
+    def add_array(self, name, first_index, last_index):
+        if name in self:
+            raise ValueError(f"Error: Redeclaration of array '{name}'.")
+        elif first_index > last_index:
+            raise ValueError(f"Error: Invalid range [{first_index} : {last_index}] for array '{name}'.")
+        
+        array_size = last_index - first_index + 1
+        self[name] = Array(first_index, last_index, self.memory_offset)
+        self.memory_offset += array_size
+
+
+    def get_array_at_index(self, name, index):
+        if name in self:
+            try:
+                return self[name].get_memory_index(index)
+            except:
+                raise ValueError(f"Error: Attempt to use variable '{name}' as an array.")
+        else:
+            raise ValueError(f"Error: Undeclared array '{name}'.")  
+
 
     def add_variable(self, name):
         if self.current_procedure:
@@ -77,27 +102,6 @@ class SymbolTable(dict):
         else:
             raise ValueError(f"Error: Undeclared variable '{name}'.")
         
-
-    def add_array(self, name, first_index, last_index):
-        if name in self:
-            raise ValueError(f"Error: Redeclaration of array '{name}'.")
-        elif first_index > last_index:
-            raise ValueError(f"Error: Invalid range [{first_index} : {last_index}] for array '{name}'.")
-        
-        array_size = last_index - first_index + 1
-        self[name] = Array(first_index, last_index, self.memory_offset)
-        self.memory_offset += array_size
-
-
-    def get_array_at_index(self, name, index):
-        if name in self:
-            try:
-                return self[name].get_memory_index(index)
-            except:
-                raise ValueError(f"Error: Attempt to use variable '{name}' as an array.")
-        else:
-            raise ValueError(f"Error: Undeclared array '{name}'.")  
-      
 
     def add_iterator(self, name):
         limit_memory_offset = self.memory_offset

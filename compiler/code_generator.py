@@ -93,7 +93,8 @@ class CodeGenerator:
         elif command_type == "proc_call":
             _, name, arguments = command
             self.generate_code_proc_call(name, arguments)
-                
+
+
     def generate_code_assign(self, variable, expression):
         if isinstance(variable, tuple):
             variable_type = variable[0]
@@ -115,7 +116,6 @@ class CodeGenerator:
                         self.code.append(f"STOREI {address}")
                     else:
                         self.code.append(f"STORE {address}")
-
         else:
             if isinstance(variable, str):
                 self.symbol_table[variable].initialized = True
@@ -124,6 +124,7 @@ class CodeGenerator:
                 self.code.append(f"STORE {address}")
             else:
                 raise Exception(f"Error: Assigning to invalid type")
+
 
     def generate_code_if_else(self, condition, true_commands, false_commands):
         simplified_condition = self.simplify_condition_if_possible(condition)
@@ -184,6 +185,7 @@ class CodeGenerator:
                 end = str(loop_end - i)
                 if self.code[i] == "JUMP end":
                     self.code[i] = f"JUMP {end}"
+
 
     def generate_code_repeat(self, commands, condition):
         simplified_condition = self.simplify_condition_if_possible(condition)
@@ -288,6 +290,7 @@ class CodeGenerator:
             elif identifier in self.symbol_table.iterators:
                 raise Exception(f"Error: Cannot read to iterator '{identifier}'")
 
+
     def generate_code_write(self, value):
         write_type = value[0]
         if write_type == "id":
@@ -322,6 +325,7 @@ class CodeGenerator:
         else:
             raise Exception(f"Error: invalid value type '{value[0]}' for WRITE")
 
+
     def generate_code_proc_call(self, name, arguments):
         if name not in self.symbol_table.procedures:
             raise Exception(f"Error: Unknown procedure '{name}'.")
@@ -350,7 +354,6 @@ class CodeGenerator:
                     raise Exception(f"Expected array for parameter '{parameter_name}', but got variable '{argument}'.")
             elif argument in self.symbol_table and isinstance(self.symbol_table[argument], Array):
                 raise Exception(f"Expected variable for parameter '{parameter_name}', but got array '{argument}'.")
-
 
         for parameter, argument in zip(parameters, arguments):
             parameter_address = parameters[parameter]
@@ -465,6 +468,7 @@ class CodeGenerator:
         else:
             raise Exception(f"Error: Invalid expression type '{expression_type}'")
     
+
     def add(self, expression):
         a = expression[1]
         b = expression[2]
@@ -478,6 +482,7 @@ class CodeGenerator:
             self.generate_code_expression(b)
             self.code.append("ADD 1")
 
+
     def substract(self, expression):
         a = expression[1]
         b = expression[2]
@@ -490,6 +495,7 @@ class CodeGenerator:
             self.code.append("STORE 1")
             self.generate_code_expression(a)
             self.code.append("SUB 1")
+
 
     def multiply(self, expression):
         a = expression[1]
@@ -778,6 +784,7 @@ class CodeGenerator:
             self.code.append("STORE 7")
             self.code.append("LOAD 5")
 
+
     def modulo(self, expression):
         a = expression[1]
         b = expression[2]
@@ -788,6 +795,7 @@ class CodeGenerator:
         else:
             self.divide(expression)
             self.code.append("LOAD 7")
+
 
     def handle_identifier(self, expression):
         if isinstance(expression, tuple):
@@ -815,6 +823,7 @@ class CodeGenerator:
                 raise Exception(f"Error: unknown variable '{name}'")
         else:
             raise Exception("Error: wrong expression id format")
+
 
     def handle_array_at_index(self, name, index):
         if name not in self.symbol_table:

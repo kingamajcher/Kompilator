@@ -1,6 +1,6 @@
 from sly import Parser
 from lexer import MyLexer
-from symbol_table import SymbolTable, Variable, Iterator, Array
+from symbol_table import SymbolTable, Variable
 from code_generator import CodeGenerator
 
 class MyParser(Parser):
@@ -238,7 +238,7 @@ class MyParser(Parser):
         return "id", p.identifier
 
 
-    # identifier
+    # Identifiers
     @_('PIDENTIFIER')
     def identifier(self, p):
         if p.PIDENTIFIER in self.symbol_table or p.PIDENTIFIER in self.symbol_table.iterators:
@@ -257,7 +257,8 @@ class MyParser(Parser):
     def identifier(self, p):
         return "array", p.PIDENTIFIER, p.number
 
-    # -----------------------------------------------
+
+    # Error handling
     def error(self, p):
         if p:
             print(f'Syntax error: {p.type} on line {p.lineno}.')
